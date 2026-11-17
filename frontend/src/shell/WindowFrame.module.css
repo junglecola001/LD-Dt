@@ -1,0 +1,121 @@
+.frame {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  min-width: 300px;
+  min-height: 220px;
+}
+
+.frameActive {
+  border-color: var(--control-border);
+  box-shadow: var(--shadow-window-active);
+}
+
+.frameDocked {
+  border-radius: var(--radius-window);
+  box-shadow: none;
+  height: 100%;
+  width: 100%;
+}
+
+.frameMaximized {
+  inset: 8px !important;
+  width: calc(100% - 16px) !important;
+  height: calc(100% - 16px) !important;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--line);
+  user-select: none;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.titlebar:active {
+  cursor: grabbing;
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.titleIcon {
+  display: inline-flex;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.titleText {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frameActive .titleText {
+  color: var(--ink);
+}
+
+.draftStatusPill {
+  font-size: 12px;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  user-select: text;
+}
+
+.resizeHandle {
+  position: absolute;
+  z-index: 4;
+}
+
+.resizeN { top: -3px; left: 6px; right: 6px; height: 6px; cursor: ns-resize; }
+.resizeS { bottom: -3px; left: 6px; right: 6px; height: 6px; cursor: ns-resize; }
+.resizeE { right: -3px; top: 6px; bottom: 6px; width: 6px; cursor: ew-resize; }
+.resizeW { left: -3px; top: 6px; bottom: 6px; width: 6px; cursor: ew-resize; }
+.resizeNW { top: -3px; left: -3px; width: 10px; height: 10px; cursor: nwse-resize; }
+.resizeNE { top: -3px; right: -3px; width: 10px; height: 10px; cursor: nesw-resize; }
+.resizeSW { bottom: -3px; left: -3px; width: 10px; height: 10px; cursor: nesw-resize; }
+.resizeSE { bottom: -3px; right: -3px; width: 10px; height: 10px; cursor: nwse-resize; }
+
+.kbHintBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px var(--space-3);
+  background: var(--accent-wash);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink);
+}

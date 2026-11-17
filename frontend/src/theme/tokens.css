@@ -1,0 +1,87 @@
+/* LD Studio semantic design tokens (plan.md 5.2 - 5.4) */
+:root {
+  --canvas: #EDEAE3;
+  --surface: #FAF9F5;
+  --surface-raised: #FCFBF8;
+  --surface-muted: #F2F0E9;
+  --surface-hover: #EAE7DF;
+
+  --ink: #1A1918;
+  --ink-muted: #6B675E;
+  --line: #E4E1D8;
+  --control-border: #8A857A;
+
+  --accent: #B4532F;
+  --accent-hover: #9C4526;
+  --accent-graphic: #CC6644;
+  --accent-wash: #F6E9E1;
+  --on-accent: #FFFDF9;
+
+  --danger: #A3362A;
+  --danger-wash: #F8E8E6;
+  --success: #3F6B4F;
+  --warning: #8A5A1F;
+
+  --shadow-window: 0 1px 2px rgba(26, 25, 24, 0.05), 0 10px 28px rgba(26, 25, 24, 0.07);
+  --shadow-window-active: 0 2px 6px rgba(26, 25, 24, 0.08), 0 16px 36px rgba(26, 25, 24, 0.11);
+  --shadow-overlay: 0 4px 18px rgba(26, 25, 24, 0.10);
+
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans SC', sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, 'Noto Serif CJK SC', 'Songti SC', serif;
+  --font-mono: 'Cascadia Code', Consolas, monospace;
+
+  --radius-control: 8px;
+  --radius-menu: 10px;
+  --radius-menu-item: 6px;
+  --radius-window: 10px;
+  --radius-modal: 12px;
+  --radius-composer: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --motion-fast: 140ms;
+}
+
+[data-theme='dark'] {
+  --canvas: #1F1E1C;
+  --surface: #262624;
+  --surface-raised: #2E2C29;
+  --surface-muted: #302E2B;
+  --surface-hover: #353330;
+
+  --ink: #F2F0EA;
+  --ink-muted: #A8A399;
+  --line: #3C3A36;
+  --control-border: #8A8478;
+
+  --accent: #D97757;
+  --accent-hover: #E08A6C;
+  --accent-graphic: #D97757;
+  --accent-wash: #3B2C26;
+  --on-accent: #201B18;
+
+  --danger: #E08A7A;
+  --danger-wash: #3D2624;
+  --success: #8FBF9F;
+  --warning: #D6A85F;
+
+  --shadow-window: 0 1px 2px rgba(0, 0, 0, 0.24), 0 8px 20px rgba(0, 0, 0, 0.28);
+  --shadow-window-active: 0 2px 6px rgba(0, 0, 0, 0.34), 0 14px 28px rgba(0, 0, 0, 0.40);
+  --shadow-overlay: 0 4px 18px rgba(0, 0, 0, 0.42);
+}
+
+[data-low-resource='true'] {
+  --motion-fast: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+  }
+}

@@ -1,0 +1,320 @@
+.shell {
+  display: grid;
+  grid-template-rows: 32px 40px 1fr 32px 24px;
+  width: 100%;
+  height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.appTitlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+
+.brandDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-graphic);
+}
+
+.demoTag {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+}
+
+.commandBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.barLeft,
+.barCenter,
+.barRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.presetBtn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.presetBtn:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.presetBtnActive {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.mainArea {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.navRail {
+  width: 208px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-2);
+  background: var(--canvas);
+  border-right: 1px solid var(--line);
+}
+
+.navRailCollapsed {
+  width: 48px;
+  padding: var(--space-2) 6px;
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.navRailCollapsed .navItem {
+  justify-content: center;
+  padding: 0;
+}
+
+.navItem:hover {
+  background: var(--surface-hover);
+}
+
+.navItemActive {
+  background: var(--surface-muted);
+  font-weight: 500;
+}
+
+.workspaceViewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--canvas);
+}
+
+.dockHost {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  width: 100%;
+  height: 100%;
+}
+
+.dockSlot {
+  min-width: 300px;
+  height: 100%;
+  flex: 1;
+}
+
+.dockSlotSide {
+  flex: 0 0 340px;
+  max-width: 45%;
+}
+
+.floatingHost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.floatingHost > * {
+  pointer-events: auto;
+}
+
+.snapGuideX {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--accent-graphic);
+  z-index: 250;
+  pointer-events: none;
+}
+
+.snapGuideY {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--accent-graphic);
+  z-index: 250;
+  pointer-events: none;
+}
+
+.windowBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 var(--space-3);
+  background: var(--surface-muted);
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.windowTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  max-width: 180px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-menu-item);
+  background: transparent;
+  font-size: 12px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.windowTab:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.windowTabActive {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.windowTabActive::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent-graphic);
+}
+
+.windowTabLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  background: var(--canvas);
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.menuContent {
+  min-width: 210px;
+  padding: 6px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--shadow-overlay);
+  z-index: 300;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px 10px;
+  border-radius: var(--radius-menu-item);
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  outline: none;
+}
+
+.menuItem[data-highlighted] {
+  background: var(--surface-muted);
+}
+
+.menuShortcut {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.menuSeparator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--line);
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 25, 24, 0.25);
+  z-index: 400;
+}
+
+.dialogContent {
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 32px));
+  padding: var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
+  z-index: 401;
+}
