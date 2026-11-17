@@ -188,22 +188,22 @@ type FeedPage struct {
 
 // Post represents a canonical post entity shared across windows.
 type Post struct {
-	ID              int64     `json:"id"`
-	TopicID         int64     `json:"topicId"`
-	PostNumber      int       `json:"postNumber"`
-	Username        string    `json:"username"`
-	DisplayName     string    `json:"displayName"`
-	AvatarTemplate  string    `json:"avatarTemplate"`
-	CookedHTML      string    `json:"cookedHtml"`
-	RawMarkdown     string    `json:"rawMarkdown,omitempty"`
-	Version         int       `json:"version"`
-	LikeCount       int       `json:"likeCount"`
-	LikedByMe       bool      `json:"likedByMe"`
-	Bookmarked      bool      `json:"bookmarked"`
-	CanEdit         bool      `json:"canEdit"`
-	CanDelete       bool      `json:"canDelete"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID             int64     `json:"id"`
+	TopicID        int64     `json:"topicId"`
+	PostNumber     int       `json:"postNumber"`
+	Username       string    `json:"username"`
+	DisplayName    string    `json:"displayName"`
+	AvatarTemplate string    `json:"avatarTemplate"`
+	CookedHTML     string    `json:"cookedHtml"`
+	RawMarkdown    string    `json:"rawMarkdown,omitempty"`
+	Version        int       `json:"version"`
+	LikeCount      int       `json:"likeCount"`
+	LikedByMe      bool      `json:"likedByMe"`
+	Bookmarked     bool      `json:"bookmarked"`
+	CanEdit        bool      `json:"canEdit"`
+	CanDelete      bool      `json:"canDelete"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 // TopicDetail represents canonical topic metadata and a post chunk.
