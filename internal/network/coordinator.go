@@ -173,6 +173,19 @@ func (c *RequestCoordinator) Status() domain.NetworkStatusSnapshot {
 	}
 }
 
+// WaiterCount returns the number of callers currently awaiting an in-flight deduplicated GET key.
+func (c *RequestCoordinator) WaiterCount(dedupKey string) int {
+	c.mu.Lock()
+	flight := c.dedupGETs[dedupKey]
+	c.mu.Unlock()
+	if flight == nil {
+		return 0
+	}
+	flight.mu.Lock()
+	defer flight.mu.Unlock()
+	return flight.waiters
+}
+
 // DoSafeGET executes a deduplicated, budgeted read request. Cancelling a single caller does not abort
 // the underlying GET if other windows are still awaiting the same key.
 func (c *RequestCoordinator) DoSafeGET(ctx context.Context, dedupKey string, expectJSON bool, buildReq func() (*http.Request, error)) (RawResponse, error) {

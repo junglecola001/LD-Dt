@@ -173,9 +173,10 @@ func TestRequestCoordinatorDedup10Windows(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
+	var startOnce sync.Once
 	tr := &mockTransport{
 		handler: func(req *http.Request) (*http.Response, error) {
-			close(started)
+			startOnce.Do(func() { close(started) })
 			<-release
 			return makeHTTPResp(200, "application/json", nil, `{"id":42}`), nil
 		},
@@ -204,6 +205,10 @@ func TestRequestCoordinatorDedup10Windows(t *testing.T) {
 	}
 
 	<-started
+	deadline := time.Now().Add(2 * time.Second)
+	for coord.WaiterCount("topic:42") < 10 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
 	close(release)
 	wg.Wait()
 	close(errs)
