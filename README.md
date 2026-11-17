@@ -8,9 +8,10 @@ LD Studio brings Linux.do browsing, search, reading, composing, notifications, a
 
 | Verification Channel | Status | Notes |
 | --- | --- | --- |
-| Local Frontend Checks & Mock UI | Pending | Run via Node/pnpm (`typecheck`, `lint`, `test`) using `DesktopBridge` mock |
-| Cloud Go/Wails Build (Actions) | Pending | Windows x64 & ARM64 builds run exclusively on GitHub Actions runners |
-| Native Windows Acceptance | Pending | Requires downloading CI artifacts and verifying WebView2, DPI, IME, and auth on Windows |
+| Local Frontend Checks & Mock UI | Passed | `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (8/8 tests), `vite build` via `MockDesktopBridge` |
+| Cloud Go/Wails CI (`44111448041`) | Passed | Commit `d67896c`: `gofmt`, `go mod verify` (`-mod=readonly`), `go vet`, `go test` (`B01–B12`, network matrix, `modernc.org/sqlite`), frontend checks |
+| Cloud Windows Build (`44111448069`) | Passed | Commit `d67896c`: `windows/amd64` (with host Go tests) & cross-compiled `windows/arm64` NSIS installers + portable ZIPs (unsigned preview artifacts) |
+| Native Windows Acceptance | Pending | Requires launching downloaded `d67896c` artifact on Windows to verify WebView2, DPI, IME, and live Linux.do compatibility |
 
 > **Important:** Per [plan.md](./plan.md), native Go/Wails compilation and packaging are executed on GitHub Actions Windows runners rather than requiring Go/MSVC/Windows SDK locally. Mock UI data is explicitly labeled as demonstration data and does not represent live Linux.do account state.
 
