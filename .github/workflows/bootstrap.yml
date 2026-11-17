@@ -75,9 +75,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path _bootstrap_out | Out-Null
           Copy-Item go.mod, go.sum -Destination _bootstrap_out/
-          Copy-Item _wails_ref/Taskfile.yml -Destination _bootstrap_out/Taskfile.yml -ErrorAction SilentlyContinue
-          if (Test-Path _wails_ref/build) {
-            Copy-Item _wails_ref/build -Destination _bootstrap_out/build -Recurse
+          Copy-Item _wails_ref/LD_Studio/Taskfile.yml -Destination _bootstrap_out/Taskfile.yml -ErrorAction SilentlyContinue
+          if (Test-Path _wails_ref/LD_Studio/build) {
+            Copy-Item _wails_ref/LD_Studio/build -Destination _bootstrap_out/build -Recurse
           }
           if (Test-Path frontend/src/generated/wails) {
             Copy-Item frontend/src/generated/wails -Destination _bootstrap_out/bindings -Recurse

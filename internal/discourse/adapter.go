@@ -159,7 +159,7 @@ func parseFeedJSON(body []byte, query domain.FeedQuery) (domain.FeedPage, error)
 
 func parseTopicJSON(body []byte) (domain.TopicDetail, error) {
 	var raw struct {
-		ID                 int64 `json:"id"`
+		ID                 int64  `json:"id"`
 		Title              string `json:"title"`
 		Slug               string `json:"slug"`
 		CategoryID         int64  `json:"category_id"`

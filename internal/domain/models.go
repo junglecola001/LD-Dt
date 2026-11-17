@@ -6,9 +6,9 @@ import "time"
 type SessionStatus string
 
 const (
-	SessionAnonymous  SessionStatus = "anonymous"
-	SessionVerifying  SessionStatus = "verifying"
-	SessionConnected  SessionStatus = "connected"
+	SessionAnonymous    SessionStatus = "anonymous"
+	SessionVerifying    SessionStatus = "verifying"
+	SessionConnected    SessionStatus = "connected"
 	SessionReauthNeeded SessionStatus = "reauth_needed"
 )
 
@@ -133,17 +133,17 @@ type NetworkStatusSnapshot struct {
 
 // FeedFilter describes the complete identity of a topic list query.
 type FeedQuery struct {
-	SiteID            string `json:"siteId"`
-	AccountScope      string `json:"accountScope"`
-	Filter            string `json:"filter"` // latest, unread, top, category
-	CategorySlug      string `json:"categorySlug,omitempty"`
-	CategoryID        int64  `json:"categoryId,omitempty"`
-	Tag               string `json:"tag,omitempty"`
-	Order             string `json:"order,omitempty"`
-	Period            string `json:"period,omitempty"`
-	Page              int    `json:"page"`
-	Cursor            string `json:"cursor,omitempty"`
-	QueryGeneration   int64  `json:"queryGeneration"`
+	SiteID          string `json:"siteId"`
+	AccountScope    string `json:"accountScope"`
+	Filter          string `json:"filter"` // latest, unread, top, category
+	CategorySlug    string `json:"categorySlug,omitempty"`
+	CategoryID      int64  `json:"categoryId,omitempty"`
+	Tag             string `json:"tag,omitempty"`
+	Order           string `json:"order,omitempty"`
+	Period          string `json:"period,omitempty"`
+	Page            int    `json:"page"`
+	Cursor          string `json:"cursor,omitempty"`
+	QueryGeneration int64  `json:"queryGeneration"`
 }
 
 // CacheKey returns a deterministic query key so pagination never leaks across filters/accounts.
@@ -153,25 +153,25 @@ func (q FeedQuery) CacheKey() string {
 
 // TopicSummary represents a single row in topic discovery lists.
 type TopicSummary struct {
-	ID                  int64     `json:"id"`
-	Title               string    `json:"title"`
-	Slug                string    `json:"slug"`
-	CategoryID          int64     `json:"categoryId"`
-	CategoryName        string    `json:"categoryName"`
-	AuthorUsername      string    `json:"authorUsername"`
-	PostsCount          int       `json:"postsCount"`
-	ReplyCount          int       `json:"replyCount"`
-	Views               int       `json:"views"`
-	LikeCount           int       `json:"likeCount"`
-	UnreadPosts         int       `json:"unreadPosts"`
-	NewPosts            int       `json:"newPosts"`
-	HighestPostNumber   int       `json:"highestPostNumber"`
-	LastReadPostNumber  int       `json:"lastReadPostNumber"`
-	Pinned              bool      `json:"pinned"`
-	Closed              bool      `json:"closed"`
-	Archived            bool      `json:"archived"`
-	NotificationLevel   NotificationLevel `json:"notificationLevel"`
-	LastPostedAt        time.Time `json:"lastPostedAt"`
+	ID                 int64             `json:"id"`
+	Title              string            `json:"title"`
+	Slug               string            `json:"slug"`
+	CategoryID         int64             `json:"categoryId"`
+	CategoryName       string            `json:"categoryName"`
+	AuthorUsername     string            `json:"authorUsername"`
+	PostsCount         int               `json:"postsCount"`
+	ReplyCount         int               `json:"replyCount"`
+	Views              int               `json:"views"`
+	LikeCount          int               `json:"likeCount"`
+	UnreadPosts        int               `json:"unreadPosts"`
+	NewPosts           int               `json:"newPosts"`
+	HighestPostNumber  int               `json:"highestPostNumber"`
+	LastReadPostNumber int               `json:"lastReadPostNumber"`
+	Pinned             bool              `json:"pinned"`
+	Closed             bool              `json:"closed"`
+	Archived           bool              `json:"archived"`
+	NotificationLevel  NotificationLevel `json:"notificationLevel"`
+	LastPostedAt       time.Time         `json:"lastPostedAt"`
 }
 
 // FeedPage contains deduplicated topics and cursor metadata.
@@ -220,13 +220,13 @@ type TopicDetail struct {
 
 // ReadAnchor stores window-local reading position without relying on fragile pixel scrollTop alone.
 type ReadAnchor struct {
-	InstanceID   string  `json:"instanceId"`
-	SiteID       string  `json:"siteId"`
-	AccountScope string  `json:"accountScope"`
-	TopicID      int64   `json:"topicId"`
-	PostNumber   int     `json:"postNumber"`
-	PostID       int64   `json:"postId"`
-	OffsetRatio  float64 `json:"offsetRatio"`
+	InstanceID   string    `json:"instanceId"`
+	SiteID       string    `json:"siteId"`
+	AccountScope string    `json:"accountScope"`
+	TopicID      int64     `json:"topicId"`
+	PostNumber   int       `json:"postNumber"`
+	PostID       int64     `json:"postId"`
+	OffsetRatio  float64   `json:"offsetRatio"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
@@ -306,20 +306,20 @@ type Draft struct {
 
 // SubmitOperation records an immutable submission snapshot and outcome receipt.
 type SubmitOperation struct {
-	OperationID      string      `json:"operationId"`
-	DraftID          string      `json:"draftId"`
-	AccountScope     string      `json:"accountScope"`
+	OperationID      string       `json:"operationId"`
+	DraftID          string       `json:"draftId"`
+	AccountScope     string       `json:"accountScope"`
 	Mode             ComposerMode `json:"mode"`
-	SnapshotRevision int64       `json:"snapshotRevision"`
-	SnapshotBody     string      `json:"snapshotBody"`
-	SnapshotTitle    string      `json:"snapshotTitle,omitempty"`
-	State            SubmitState `json:"state"`
-	CreatedTopicID   int64       `json:"createdTopicId,omitempty"`
-	CreatedPostID    int64       `json:"createdPostId,omitempty"`
-	CreatedPostNum   int         `json:"createdPostNumber,omitempty"`
-	ErrorCode        ErrCode     `json:"errorCode,omitempty"`
-	ErrorMessage     string      `json:"errorMessage,omitempty"`
-	UpdatedAt        time.Time   `json:"updatedAt"`
+	SnapshotRevision int64        `json:"snapshotRevision"`
+	SnapshotBody     string       `json:"snapshotBody"`
+	SnapshotTitle    string       `json:"snapshotTitle,omitempty"`
+	State            SubmitState  `json:"state"`
+	CreatedTopicID   int64        `json:"createdTopicId,omitempty"`
+	CreatedPostID    int64        `json:"createdPostId,omitempty"`
+	CreatedPostNum   int          `json:"createdPostNumber,omitempty"`
+	ErrorCode        ErrCode      `json:"errorCode,omitempty"`
+	ErrorMessage     string       `json:"errorMessage,omitempty"`
+	UpdatedAt        time.Time    `json:"updatedAt"`
 }
 
 // Notification represents a forum notification separated from topic read state.

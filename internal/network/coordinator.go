@@ -122,15 +122,15 @@ func NewRequestCoordinator(
 		clock = domain.SystemClock{}
 	}
 	return &RequestCoordinator{
-		cfg:        cfg,
-		clock:      clock,
-		transport:  transport,
-		sessions:   sessions,
-		challenge:  challenge,
-		events:     events,
-		phase:      domain.NetworkReady,
-		dedupGETs:  make(map[string]*inFlightGET),
-		jitterFn:   defaultJitter,
+		cfg:       cfg,
+		clock:     clock,
+		transport: transport,
+		sessions:  sessions,
+		challenge: challenge,
+		events:    events,
+		phase:     domain.NetworkReady,
+		dedupGETs: make(map[string]*inFlightGET),
+		jitterFn:  defaultJitter,
 	}
 }
 

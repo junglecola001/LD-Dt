@@ -49,7 +49,7 @@ func (NoopPlatformAdapter) OpenIsolatedAuthHost(context.Context, string) ([]doma
 	return nil, domain.NewError(domain.ErrCodeChallengeRequired, "请使用桌面环境中的独立认证窗口完成验证", true, nil)
 }
 
-func (NoopPlatformAdapter) StoreSecret(string, []byte) error { return nil }
+func (NoopPlatformAdapter) StoreSecret(string, []byte) error  { return nil }
 func (NoopPlatformAdapter) ReadSecret(string) ([]byte, error) { return nil, nil }
 func (NoopPlatformAdapter) DeleteSecret(string) error         { return nil }
 func (NoopPlatformAdapter) OpenExternalURL(string) error      { return nil }

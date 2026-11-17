@@ -64,8 +64,8 @@ func (m *mockSessionStore) Generation() int64 {
 }
 
 func (m *mockSessionStore) ApplySyncedCookies(string, int64, []domain.CookieRecord) error { return nil }
-func (m *mockSessionStore) ExportCookies(string) []domain.CookieRecord                   { return nil }
-func (m *mockSessionStore) ClearSite(string) error                                       { return nil }
+func (m *mockSessionStore) ExportCookies(string) []domain.CookieRecord { return nil }
+func (m *mockSessionStore) ClearSite(string) error { return nil }
 
 type mockChallengeHost struct {
 	calls atomic.Int32

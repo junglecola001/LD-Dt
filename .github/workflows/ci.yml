@@ -93,6 +93,7 @@ jobs:
         run: |
           $unformatted = gofmt -l .
           if ($unformatted) {
+            gofmt -d .
             Write-Error "Go source needs formatting:`n$unformatted"
             exit 1
           }

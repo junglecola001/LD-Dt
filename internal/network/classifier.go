@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/junglecola001/LD-Dt/internal/domain"
 )
 
 // ClassificationKind identifies the normalized network outcome before JSON unmarshalling.
