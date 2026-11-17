@@ -16,14 +16,13 @@ tasks:
 
   install:frontend:deps:pnpm:
     dir: frontend
+    status:
+      - test -d node_modules
     sources:
       - package.json
       - pnpm-lock.yaml
     generates:
       - node_modules
-    preconditions:
-      - sh: pnpm --version
-        msg: "pnpm not found"
     cmds:
       - pnpm install --frozen-lockfile
 
@@ -37,6 +36,8 @@ tasks:
     summary: Build the frontend project
     run: once
     dir: frontend
+    status:
+      - test -f dist/index.html
     sources:
       - "**/*"
       - exclude: node_modules/**/*
@@ -86,6 +87,8 @@ tasks:
     run: once
     deps:
       - task: go:mod:tidy
+    status:
+      - test -d frontend/src/generated/wails
     sources:
       - "**/*.go"
       - go.mod
@@ -96,9 +99,11 @@ tasks:
       - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts -d frontend/src/generated/wails
 
   generate:icons:
-    summary: Generates Windows .ico from appicon.png
+    summary: Generates Windows .ico from appicon.png when missing
     run: once
     dir: build
+    status:
+      - test -f windows/icon.ico
     sources:
       - "appicon.png"
     generates:
