@@ -1,0 +1,47 @@
+# Dependencies & build outputs
+node_modules/
+frontend/dist/
+frontend/.vite/
+bin/
+dist/
+target/
+build/bin/
+*.syso
+
+# Local databases & runtime data (never commit user/session data)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.WebView2/
+webview2-profile/
+cookies/
+diagnostics/
+*.log
+logs/
+
+# Secrets & certificates
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+*.cer
+
+# Test & coverage artifacts
+coverage/
+playwright-report/
+test-results/
+
+# Reference code & OS noise
+reference/
+tmp/
+.DS_Store
+Thumbs.db
+desktop.ini
