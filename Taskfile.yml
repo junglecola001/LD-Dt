@@ -1,0 +1,33 @@
+version: '3'
+
+vars:
+  APP_NAME: "LD-Studio"
+  BIN_DIR: "bin"
+  PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "pnpm"}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  GOOS: '{{.GOOS | default OS}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+
+tasks:
+  build:
+    summary: Builds LD Studio
+    cmds:
+      - task: "{{.GOOS}}:build"
+
+  package:
+    summary: Packages a production build of LD Studio
+    cmds:
+      - task: "{{.GOOS}}:package"
+
+  run:
+    summary: Runs LD Studio
+    cmds:
+      - task: "{{.GOOS}}:run"
+
+  dev:
+    summary: Runs LD Studio in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

@@ -96,6 +96,19 @@ jobs:
           if (Test-Path go.sum) { $env:GOFLAGS = '-mod=readonly' }
           go test -v ./...
 
+      - name: Ensure NSIS (makensis) is available
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            $nsisDefault = "C:\Program Files (x86)\NSIS"
+            if (Test-Path "$nsisDefault\makensis.exe") {
+              $nsisDefault | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            } else {
+              choco install nsis -y --no-progress
+              $nsisDefault | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+
       - name: Build & Package Windows (${{ matrix.arch }})
         shell: pwsh
         run: |
@@ -109,10 +122,13 @@ jobs:
           if (Test-Path go.sum) { $env:GOFLAGS = '-mod=readonly' }
 
           if (Test-Path 'build/windows/Taskfile.yml') {
-            wails3 package GOOS=windows GOARCH=${{ matrix.arch }}
+            wails3 package GOOS=windows ARCH=${{ matrix.arch }} INSTALL_SCOPE=user
             if ($LASTEXITCODE -ne 0) { throw "wails3 package failed with exit code $LASTEXITCODE" }
-            if (Test-Path bin) {
-              Copy-Item bin/* -Destination $stageDir/ -Recurse -Force
+            if (Test-Path "bin/LD-Studio.exe") {
+              Copy-Item "bin/LD-Studio.exe" -Destination "$stageDir/LD-Studio.exe" -Force
+            }
+            Get-ChildItem -Path "bin" -Filter "*-installer.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+              Copy-Item $_.FullName -Destination "dist/$($_.Name)" -Force
             }
           } else {
             go build -ldflags="-s -w -H windowsgui" -o "$stageDir/LD-Studio.exe" .
@@ -133,7 +149,10 @@ jobs:
 
           $zipPath = "dist/LD-Studio-windows-${{ matrix.arch }}-$shortSha.zip"
           Compress-Archive -Path "$stageDir/*" -DestinationPath $zipPath -Force
-          Get-FileHash $zipPath -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $zipPath -Leaf)" } | Out-File -FilePath "dist/SHA256SUMS-${{ matrix.arch }}.txt" -Encoding utf8
+          Get-ChildItem -Path "dist" -File | Where-Object { $_.Extension -in '.zip', '.exe' } | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)"
+          } | Out-File -FilePath "dist/SHA256SUMS-${{ matrix.arch }}.txt" -Encoding utf8
 
       - name: Upload Windows artifacts (${{ matrix.arch }})
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -141,7 +160,7 @@ jobs:
           name: ld-studio-windows-${{ matrix.arch }}-${{ github.sha }}
           path: |
             dist/*.zip
+            dist/*.exe
             dist/SHA256SUMS-*.txt
-            dist/staging-${{ matrix.arch }}/*.exe
             dist/staging-${{ matrix.arch }}/build-manifest.json
           retention-days: 14
