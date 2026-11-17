@@ -96,7 +96,7 @@ jobs:
           if (Test-Path go.sum) { $env:GOFLAGS = '-mod=readonly' }
 
           if (Test-Path 'build/windows/Taskfile.yml') {
-            wails3 package GOOS=windows GOARCH=${{ matrix.arch }}
+            wails3 package GOOS=windows ARCH=${{ matrix.arch }} INSTALL_SCOPE=user
             if ($LASTEXITCODE -ne 0) { throw "wails3 package failed" }
             if (Test-Path bin) {
               Copy-Item bin/* -Destination "release-assets/" -Recurse -Force
