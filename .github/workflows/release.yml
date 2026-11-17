@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-tag:
+    name: Validate release tag & main ancestry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify tag is on main and matches semver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid semver tag: $TAG"
+            exit 1
+          fi
+          git fetch origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main; then
+            echo "Release commit must belong to main branch history"
+            exit 1
+          fi
+
+  build-release:
+    name: Build Release (${{ matrix.arch }})
+    needs: validate-tag
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.26.10'
+          cache-dependency-path: go.sum
+
+      - name: Install Wails v3.1.0 CLI
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          "$env:USERPROFILE\go\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Package ${{ matrix.arch }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "${{ github.ref_name }}"
+          $stageDir = "release-assets/staging-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
+
+          $env:GOOS = 'windows'
+          $env:GOARCH = '${{ matrix.arch }}'
+          if (Test-Path go.sum) { $env:GOFLAGS = '-mod=readonly' }
+
+          if (Test-Path 'build/windows/Taskfile.yml') {
+            wails3 package GOOS=windows GOARCH=${{ matrix.arch }}
+            if ($LASTEXITCODE -ne 0) { throw "wails3 package failed" }
+            if (Test-Path bin) {
+              Copy-Item bin/* -Destination "release-assets/" -Recurse -Force
+            }
+          } else {
+            go build -ldflags="-s -w -H windowsgui" -o "$stageDir/LD-Studio.exe" .
+            if ($LASTEXITCODE -ne 0) { throw "go build failed" }
+          }
+
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md -Destination $stageDir/
+          $zipPath = "release-assets/LD-Studio-${tag}-windows-${{ matrix.arch }}.zip"
+          Compress-Archive -Path "$stageDir/*" -DestinationPath $zipPath -Force
+
+      - name: Upload staged release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-${{ matrix.arch }}
+          path: release-assets/*
+
+  publish-draft-release:
+    name: Create Draft Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: all-assets
+
+      - name: Generate SHA256SUMS and create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p upload
+          find all-assets -type f \( -name '*.zip' -o -name '*.exe' \) -exec cp {} upload/ \;
+          (cd upload && sha256sum * > SHA256SUMS.txt)
+          gh release create "${GITHUB_REF_NAME}" upload/* \
+            --draft \
+            --title "LD Studio ${GITHUB_REF_NAME}" \
+            --notes "Built from commit ${GITHUB_SHA}. Unsigned preview/release build; manual installation required."
