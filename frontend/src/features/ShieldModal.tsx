@@ -81,8 +81,8 @@ export function ShieldModal({
       await bridge.openShieldWindow(mode);
       setFeedback(
         mode === 'challenge'
-          ? '已打开独立 Edge 过盾窗口（与主进程隔离，避免白屏）：完成 Cloudflare 验证后可点“单次探测恢复”；若站点启用 TLS 绑定仍拦截原生 HTTP，请展开下方导入 Cookie 与 User-Agent。'
-          : '已打开独立 Edge 登录窗口：登录 Linux.do 后若仍提示验证，请点击“单次探测恢复”或展开下方导入浏览器 Cookie（_t / _forum_session / cf_clearance）与 User-Agent。',
+          ? '已打开独立 Edge 过盾窗口：通过 Cloudflare 验证后软件会自动同步 Cookie 并切换至 Edge 网络栈联动；若未自动刷新请点下方“单次探测恢复”。'
+          : '已打开独立 Edge 登录窗口：在窗口中登录 Linux.do 后，软件会自动通过本地 CDP 同步登录态与 @用户名（保持窗口打开或最小化可免 TLS 拦截；也可随时点击“单次探测恢复”手动触发同步）。',
       );
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : '无法打开独立验证窗口');
@@ -96,7 +96,11 @@ export function ShieldModal({
       const res = await bridge.probeRecovery();
       onRecovered(res.session, res.network);
       if (res.network.phase === 'ready') {
-        setFeedback('站点探测通过，已恢复真实数据读取');
+        setFeedback(
+          res.session.status === 'connected'
+            ? `已同步登录 @${res.session.username}，真实数据已恢复`
+            : '站点探测通过，已恢复匿名真实数据读取（如需登录账号请点击“独立登录窗口”）',
+        );
       } else {
         setFeedback(res.network.message || `当前状态：${res.network.phase}`);
       }

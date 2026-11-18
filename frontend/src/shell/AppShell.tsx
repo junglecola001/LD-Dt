@@ -127,14 +127,21 @@ export function AppShell() {
       setNetwork(snap);
       if (!active.isMock && (snap.phase === 'challenge_required' || snap.phase === 'challenge_paused')) {
         setShieldOpen(true);
+      } else if (!active.isMock && snap.phase === 'ready') {
+        void queryClient.invalidateQueries();
       }
     });
-    const unsubSess = active.subscribeSession?.(setSession);
+    const unsubSess = active.subscribeSession?.((nextSess) => {
+      setSession(nextSess);
+      if (!active.isMock) {
+        void queryClient.invalidateQueries();
+      }
+    });
     return () => {
       unsubNet?.();
       unsubSess?.();
     };
-  }, [demoMode]);
+  }, [demoMode, queryClient]);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -351,7 +358,7 @@ export function AppShell() {
             onClick={() => setShieldOpen(true)}
           >
             {isShieldAlert ? <ShieldWarning size={15} /> : <ShieldCheck size={15} />}
-            过盾 / 连接
+            {!bridge.isMock && session.status === 'connected' ? `@${session.username}` : '过盾 / 连接'}
           </Button>
           <Button variant="ghost" style={{ height: 28 }} onClick={() => openSingletonWindow('search', '全局搜索')}>
             <MagnifyingGlass size={15} />

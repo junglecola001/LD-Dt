@@ -11,14 +11,15 @@ import (
 	"github.com/junglecola001/LD-Dt/internal/storage"
 )
 
-// AuthBridgeHooks connects AuthService to Wails window/browser helpers and Discourse probes
+// AuthBridgeHooks connects AuthService to desktop window/browser helpers and Discourse probes
 // without coupling domain services to Wails packages.
 type AuthBridgeHooks struct {
-	Transport         *session.BrowserLikeTransport
-	OpenShieldWindow  func(targetURL string) error
-	OpenExternalURL   func(targetURL string) error
-	ProbeCurrentUser  func(ctx context.Context) (accountID, username, displayName string, err error)
-	ProbeSiteMetadata func(ctx context.Context) error
+	Transport            *session.BrowserLikeTransport
+	OpenShieldWindow     func(targetURL string) error
+	SyncFromShieldWindow func(ctx context.Context) error
+	OpenExternalURL      func(targetURL string) error
+	ProbeCurrentUser     func(ctx context.Context) (accountID, username, displayName string, err error)
+	ProbeSiteMetadata    func(ctx context.Context) error
 }
 
 // AuthService manages site session state, account namespaces, Cloudflare shield windows, and safe logout boundaries.
@@ -100,17 +101,30 @@ func (s *AuthService) ApplyCredentials(ctx context.Context, input domain.Credent
 
 // ProbeRecovery runs a single safe GET probe to check whether Cloudflare/429 blocks have cleared.
 func (s *AuthService) ProbeRecovery(ctx context.Context) (domain.AuthProbeResult, error) {
+	if s.hooks.SyncFromShieldWindow != nil {
+		_ = s.hooks.SyncFromShieldWindow(ctx)
+	}
+	if s.coord != nil {
+		s.coord.ResetChallengeCooldown()
+	}
 	if s.hooks.ProbeCurrentUser != nil {
 		acctID, username, displayName, err := s.hooks.ProbeCurrentUser(ctx)
 		if err == nil && acctID != "" {
 			cur := s.sessions.ConfirmAccount(acctID, username, displayName)
 			if s.events != nil {
 				s.events.Emit("SessionChanged", cur)
+				s.events.Emit("NetworkStateChanged", s.GetNetworkStatus(ctx))
 			}
 			return domain.AuthProbeResult{
 				Session: cur,
 				Network: s.GetNetworkStatus(ctx),
 			}, nil
+		}
+		if err != nil && s.hooks.ProbeSiteMetadata == nil {
+			return domain.AuthProbeResult{
+				Session: s.sessions.Current(),
+				Network: s.GetNetworkStatus(ctx),
+			}, err
 		}
 	}
 	if s.hooks.ProbeSiteMetadata != nil {
@@ -124,6 +138,17 @@ func (s *AuthService) ProbeRecovery(ctx context.Context) (domain.AuthProbeResult
 		Session: s.sessions.Current(),
 		Network: s.GetNetworkStatus(ctx),
 	}, nil
+}
+
+// SyncAndProbeFromBrowser persists cookies synced from the isolated Edge CDP session and refreshes session state.
+func (s *AuthService) SyncAndProbeFromBrowser(ctx context.Context, cookieHeader, userAgent string) {
+	if s.hooks.Transport != nil && strings.TrimSpace(cookieHeader) != "" {
+		_ = s.hooks.Transport.ApplyManualCredentials(domain.CredentialsInput{
+			CookieHeader: cookieHeader,
+			UserAgent:    userAgent,
+		})
+	}
+	_, _ = s.ProbeRecovery(ctx)
 }
 
 // ConfirmAccount switches to an authenticated namespace and emits SessionChanged.

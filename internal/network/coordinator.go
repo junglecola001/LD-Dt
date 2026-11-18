@@ -664,6 +664,23 @@ func (c *RequestCoordinator) enterChallengePaused() {
 	c.emitStatus()
 }
 
+// ResetChallengeCooldown clears Cloudflare challenge cooldown after the user completes verification or syncs cookies.
+func (c *RequestCoordinator) ResetChallengeCooldown() {
+	c.mu.Lock()
+	c.challengeCooldownUntil = time.Time{}
+	changed := false
+	if c.phase == domain.NetworkChallengePaused || c.phase == domain.NetworkChallengeRequired {
+		c.phase = domain.NetworkReady
+		c.lastErrorCode = ""
+		c.statusMessage = ""
+		changed = true
+	}
+	c.mu.Unlock()
+	if changed {
+		c.emitStatus()
+	}
+}
+
 func (c *RequestCoordinator) markReady() {
 	c.mu.Lock()
 	changed := c.phase != domain.NetworkReady || !c.blockedUntil.IsZero()

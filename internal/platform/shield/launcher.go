@@ -2,11 +2,14 @@ package shield
 
 import (
 	"errors"
+	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -22,7 +25,7 @@ func LaunchWindow(targetURL, dataDir string, fallbackOpen func(string) error) er
 
 	if runtime.GOOS == "windows" {
 		if edgePath := findEdgeExecutable(); edgePath != "" {
-			if startEdgeAppWindow(edgePath, parsed.String(), dataDir) == nil {
+			if _, startErr := startEdgeAppWindow(edgePath, parsed.String(), dataDir, 0); startErr == nil {
 				return nil
 			}
 		}
@@ -70,7 +73,27 @@ func findEdgeExecutable() string {
 	return ""
 }
 
-func startEdgeAppWindow(edgePath, targetURL, dataDir string) error {
+func allocateLoopbackPort() (int, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer ln.Close()
+	addr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok || addr.Port <= 0 {
+		return 0, errors.New("failed to allocate loopback port")
+	}
+	return addr.Port, nil
+}
+
+func edgeBridgeProfileDir(dataDir string) string {
+	if strings.TrimSpace(dataDir) == "" {
+		return ""
+	}
+	return filepath.Join(dataDir, "EdgeBridge")
+}
+
+func startEdgeAppWindow(edgePath, targetURL, dataDir string, cdpPort int) (*exec.Cmd, error) {
 	args := []string{
 		"--app=" + targetURL,
 		"--window-size=600,760",
@@ -78,8 +101,13 @@ func startEdgeAppWindow(edgePath, targetURL, dataDir string) error {
 		"--no-first-run",
 		"--no-default-browser-check",
 	}
-	if strings.TrimSpace(dataDir) != "" {
-		profileDir := filepath.Join(dataDir, "ShieldBrowser")
+	if cdpPort > 0 {
+		args = append(args,
+			fmt.Sprintf("--remote-debugging-port=%d", cdpPort),
+			fmt.Sprintf("--remote-allow-origins=http://127.0.0.1:%d", cdpPort),
+		)
+	}
+	if profileDir := edgeBridgeProfileDir(dataDir); profileDir != "" {
 		if err := os.MkdirAll(profileDir, 0o700); err == nil {
 			args = append(args, "--user-data-dir="+profileDir)
 		}
@@ -87,10 +115,37 @@ func startEdgeAppWindow(edgePath, targetURL, dataDir string) error {
 
 	cmd := exec.Command(edgePath, args...)
 	if err := cmd.Start(); err != nil {
-		return err
+		return nil, err
 	}
 	go func() {
 		_ = cmd.Wait()
 	}()
-	return nil
+	return cmd, nil
+}
+
+func readPersistedPort(dataDir string) int {
+	profileDir := edgeBridgeProfileDir(dataDir)
+	if profileDir == "" {
+		return 0
+	}
+	raw, err := os.ReadFile(filepath.Join(profileDir, "ld-cdp-port.txt"))
+	if err != nil {
+		return 0
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil || port <= 0 {
+		return 0
+	}
+	return port
+}
+
+func writePersistedPort(dataDir string, port int) {
+	profileDir := edgeBridgeProfileDir(dataDir)
+	if profileDir == "" || port <= 0 {
+		return
+	}
+	if err := os.MkdirAll(profileDir, 0o700); err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(profileDir, "ld-cdp-port.txt"), []byte(strconv.Itoa(port)), 0o600)
 }

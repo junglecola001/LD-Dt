@@ -61,10 +61,21 @@ func main() {
 		log.Fatalf("init transport: %v", err)
 	}
 
+	var openExternal func(string) error
+	shieldMgr := shield.NewManager(dataDir, func(u string) error {
+		if openExternal != nil {
+			return openExternal(u)
+		}
+		return nil
+	})
+	defer shieldMgr.Close()
+
+	hybridTransport := shield.NewHybridTransport(shieldMgr, transport)
+
 	coord := network.NewRequestCoordinator(
 		network.DefaultConfig("linux.do", "https://linux.do/site.json"),
 		clock,
-		transport,
+		hybridTransport,
 		sessMgr,
 		nil,
 		emitter,
@@ -97,14 +108,27 @@ func main() {
 		},
 	})
 	emitter.app = wailsApp
+	openExternal = wailsApp.Browser.OpenURL
 
 	authSvc.SetHooks(app.AuthBridgeHooks{
 		Transport: transport,
 		OpenShieldWindow: func(targetURL string) error {
-			// Launch an isolated native Edge app window outside Wails's request
-			// interceptor so Cloudflare Turnstile / login never hit Wails
-			// x-wails-window-id headers or WebView2 visibility white screens (plan.md 7.3).
-			return shield.LaunchWindow(targetURL, dataDir, wailsApp.Browser.OpenURL)
+			// Launch an isolated native Edge app window with loopback CDP sync and
+			// FluxDO-style browser fetch transport so login + Cloudflare clearance
+			// automatically propagate into LD Studio (plan.md 7.3).
+			return shieldMgr.LaunchAndWatch(targetURL, func(res shield.SyncResult) {
+				go authSvc.SyncAndProbeFromBrowser(context.Background(), res.CookieHeader, res.UserAgent)
+			})
+		},
+		SyncFromShieldWindow: func(ctx context.Context) error {
+			res, ready, syncErr := shieldMgr.SyncFromOpenWindow(ctx)
+			if syncErr != nil || !ready || res.CookieHeader == "" {
+				return syncErr
+			}
+			return transport.ApplyManualCredentials(domain.CredentialsInput{
+				CookieHeader: res.CookieHeader,
+				UserAgent:    res.UserAgent,
+			})
 		},
 		OpenExternalURL: func(targetURL string) error {
 			return wailsApp.Browser.OpenURL(targetURL)
