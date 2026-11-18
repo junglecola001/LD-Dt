@@ -133,22 +133,58 @@ type NetworkStatusSnapshot struct {
 
 // FeedFilter describes the complete identity of a topic list query.
 type FeedQuery struct {
-	SiteID          string `json:"siteId"`
-	AccountScope    string `json:"accountScope"`
-	Filter          string `json:"filter"` // latest, unread, top, category
-	CategorySlug    string `json:"categorySlug,omitempty"`
-	CategoryID      int64  `json:"categoryId,omitempty"`
-	Tag             string `json:"tag,omitempty"`
-	Order           string `json:"order,omitempty"`
-	Period          string `json:"period,omitempty"`
-	Page            int    `json:"page"`
-	Cursor          string `json:"cursor,omitempty"`
-	QueryGeneration int64  `json:"queryGeneration"`
+	SiteID             string `json:"siteId"`
+	AccountScope       string `json:"accountScope"`
+	Filter             string `json:"filter"` // latest, unread, top, new, category, tag
+	CategorySlug       string `json:"categorySlug,omitempty"`
+	ParentCategorySlug string `json:"parentCategorySlug,omitempty"`
+	CategoryID         int64  `json:"categoryId,omitempty"`
+	Tag                string `json:"tag,omitempty"`
+	Order              string `json:"order,omitempty"`
+	Period             string `json:"period,omitempty"`
+	Page               int    `json:"page"`
+	Cursor             string `json:"cursor,omitempty"`
+	QueryGeneration    int64  `json:"queryGeneration"`
 }
 
 // CacheKey returns a deterministic query key so pagination never leaks across filters/accounts.
 func (q FeedQuery) CacheKey() string {
 	return q.SiteID + "|" + q.AccountScope + "|" + q.Filter + "|" + q.CategorySlug + "|" + q.Tag + "|" + q.Order + "|" + q.Period
+}
+
+// CategoryItem represents a Discourse forum category shown in the left navigation rail.
+type CategoryItem struct {
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Slug             string `json:"slug"`
+	Color            string `json:"color"`
+	TextColor        string `json:"textColor"`
+	TopicCount       int    `json:"topicCount"`
+	ParentCategoryID int64  `json:"parentCategoryId,omitempty"`
+	Description      string `json:"description,omitempty"`
+}
+
+// TagItem represents a Discourse forum tag with optional topic count and group label.
+type TagItem struct {
+	Name      string `json:"name"`
+	Count     int    `json:"count"`
+	GroupName string `json:"groupName,omitempty"`
+}
+
+// SiteMetadata holds forum categories and popular tags fetched from /site.json and /tags.json.
+type SiteMetadata struct {
+	SiteID       string         `json:"siteId"`
+	CanTagTopics bool           `json:"canTagTopics"`
+	Categories   []CategoryItem `json:"categories"`
+	Tags         []TagItem      `json:"tags"`
+	FetchedAt    time.Time      `json:"fetchedAt"`
+}
+
+// CredentialsInput carries user-supplied browser Cookie / User-API-Key / User-Agent for Cloudflare recovery.
+type CredentialsInput struct {
+	CookieHeader string `json:"cookieHeader"`
+	UserAPIKey   string `json:"userApiKey"`
+	UserAgent    string `json:"userAgent"`
 }
 
 // TopicSummary represents a single row in topic discovery lists.
@@ -404,4 +440,10 @@ type WorkspaceLayout struct {
 	ActiveInstance string        `json:"activeInstanceId"`
 	Windows        []WindowState `json:"windows"`
 	UpdatedAt      time.Time     `json:"updatedAt"`
+}
+
+// AuthProbeResult bundles the current session and network state after probing or applying credentials.
+type AuthProbeResult struct {
+	Session SiteSession           `json:"session"`
+	Network NetworkStatusSnapshot `json:"network"`
 }

@@ -17,6 +17,11 @@ type NotificationBookmarkGateway interface {
 	DeleteBookmark(ctx context.Context, bookmarkID int64) error
 }
 
+// NotificationFetcher optionally loads notifications from Discourse.
+type NotificationFetcher interface {
+	FetchNotifications(ctx context.Context, siteID, accountScope string) ([]domain.Notification, error)
+}
+
 // NotificationService separates live unread counts from stale bootstrap snapshots
 // and prevents failed notification navigation from advancing topic read cursors (B11, B12).
 type NotificationService struct {
@@ -42,6 +47,39 @@ func NewNotificationService(sessions *session.Manager, gateway NotificationBookm
 		bookmarks:    make(map[string][]domain.Bookmark),
 		bookmarkSync: make(map[string]domain.BookmarkSyncState),
 	}
+}
+
+// GetNotifications fetches latest notifications when gateway supports it and returns reconciled snapshot.
+func (s *NotificationService) GetNotifications(ctx context.Context) (domain.NotificationSnapshot, error) {
+	sess := s.sessions.Current()
+	scope := sess.AccountScope()
+	if fetcher, ok := s.gateway.(NotificationFetcher); ok && s.gateway != nil {
+		items, err := fetcher.FetchNotifications(ctx, sess.SiteID, scope)
+		if err != nil {
+			s.mu.Lock()
+			snap := s.snapshots[scope]
+			s.mu.Unlock()
+			return snap, err
+		}
+		unread := 0
+		for _, item := range items {
+			if !item.Read {
+				unread++
+			}
+		}
+		s.mu.Lock()
+		snap := s.snapshots[scope]
+		snap.Notifications = items
+		snap.UnreadCount = unread
+		snap.CountVersion++
+		snap.LastReconciledAt = s.clock.Now()
+		s.snapshots[scope] = snap
+		s.mu.Unlock()
+		return snap, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.snapshots[scope], nil
 }
 
 // ApplyBootstrapCount never overwrites a newer live unread count (B11).
@@ -75,6 +113,29 @@ func (s *NotificationService) SetNotifications(items []domain.Notification) doma
 	snap.LastReconciledAt = s.clock.Now()
 	s.snapshots[scope] = snap
 	return snap
+}
+
+// MarkAllNotificationsRead marks all loaded notifications read on server and locally.
+func (s *NotificationService) MarkAllNotificationsRead(ctx context.Context) (domain.NotificationSnapshot, error) {
+	scope := s.sessions.Current().AccountScope()
+	if s.gateway != nil {
+		if err := s.gateway.MarkAllNotificationsRead(ctx); err != nil {
+			s.mu.Lock()
+			snap := s.snapshots[scope]
+			s.mu.Unlock()
+			return snap, err
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	snap := s.snapshots[scope]
+	for i := range snap.Notifications {
+		snap.Notifications[i].Read = true
+	}
+	snap.UnreadCount = 0
+	snap.CountVersion++
+	s.snapshots[scope] = snap
+	return snap, nil
 }
 
 // ConfirmNotificationVisited marks a notification read ONLY after target topic navigation succeeds (B11).

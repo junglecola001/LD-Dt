@@ -4,8 +4,9 @@ import (
 	"context"
 	"embed"
 	"log"
-	"net/http"
-	"time"
+	"os"
+	"path/filepath"
+	"sync"
 
 	"github.com/junglecola001/LD-Dt/internal/app"
 	"github.com/junglecola001/LD-Dt/internal/discourse"
@@ -14,18 +15,11 @@ import (
 	"github.com/junglecola001/LD-Dt/internal/session"
 	"github.com/junglecola001/LD-Dt/internal/storage"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
-
-type stdlibTransport struct {
-	client *http.Client
-}
-
-func (t *stdlibTransport) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	return t.client.Do(req.WithContext(ctx))
-}
 
 type wailsEventEmitter struct {
 	app *application.App
@@ -43,17 +37,35 @@ func init() {
 	application.RegisterEvent[domain.Draft]("DraftSaved")
 }
 
+func appDataDir() string {
+	if base := os.Getenv("LOCALAPPDATA"); base != "" {
+		return filepath.Join(base, "LD-Studio")
+	}
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "LD-Studio")
+	}
+	return filepath.Join(".", ".ld-studio-data")
+}
+
 func main() {
+	dataDir := appDataDir()
+	webviewDataDir := filepath.Join(dataDir, "WebView2")
+	credsPath := filepath.Join(dataDir, "credentials.json")
+
 	clock := domain.SystemClock{}
 	sessMgr := session.NewManager("linux.do", clock)
 	store := storage.NewMemoryStore()
-
 	emitter := &wailsEventEmitter{}
-	httpClient := &http.Client{Timeout: 20 * time.Second}
+
+	transport, err := session.NewBrowserLikeTransport("https://linux.do", credsPath)
+	if err != nil {
+		log.Fatalf("init transport: %v", err)
+	}
+
 	coord := network.NewRequestCoordinator(
-		network.DefaultConfig("linux.do", "https://linux.do/about.json"),
+		network.DefaultConfig("linux.do", "https://linux.do/site.json"),
 		clock,
-		&stdlibTransport{client: httpClient},
+		transport,
 		sessMgr,
 		nil,
 		emitter,
@@ -62,8 +74,9 @@ func main() {
 
 	authSvc := app.NewAuthService(sessMgr, coord, store, emitter)
 	topicSvc := app.NewTopicService(sessMgr, store, adapter, clock, emitter)
+	searchSvc := app.NewSearchService(sessMgr, adapter)
 	composerSvc := app.NewComposerService(sessMgr, store, nil, clock, emitter)
-	notifSvc := app.NewNotificationService(sessMgr, nil, clock)
+	notifSvc := app.NewNotificationService(sessMgr, adapter, clock)
 	workspaceSvc := app.NewWorkspaceService(store, sessMgr, clock)
 
 	wailsApp := application.New(application.Options{
@@ -72,6 +85,7 @@ func main() {
 		Services: []application.Service{
 			application.NewService(authSvc),
 			application.NewService(topicSvc),
+			application.NewService(searchSvc),
 			application.NewService(composerSvc),
 			application.NewService(notifSvc),
 			application.NewService(workspaceSvc),
@@ -79,8 +93,57 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
+		Windows: application.WindowsOptions{
+			WebviewUserDataPath: webviewDataDir,
+		},
 	})
 	emitter.app = wailsApp
+
+	var shieldMu sync.Mutex
+	var shieldWin *application.WebviewWindow
+
+	authSvc.SetHooks(app.AuthBridgeHooks{
+		Transport: transport,
+		OpenShieldWindow: func(targetURL string) error {
+			shieldMu.Lock()
+			defer shieldMu.Unlock()
+			if shieldWin != nil {
+				shieldWin.SetURL(targetURL)
+				shieldWin.Show()
+				shieldWin.Focus()
+				return nil
+			}
+			// Isolated secondary WebView2 window with AllowSimpleEventEmit disabled (plan.md 7.3).
+			shieldWin = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+				Name:                 "ld-shield-host",
+				Title:                "LD Studio · 站点验证与登录",
+				Width:                540,
+				Height:               680,
+				AlwaysOnTop:          true,
+				AllowSimpleEventEmit: false,
+				BackgroundColour:     application.NewRGB(250, 249, 245),
+				URL:                  targetURL,
+			})
+			shieldWin.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+				shieldMu.Lock()
+				shieldWin = nil
+				shieldMu.Unlock()
+			})
+			shieldWin.Center()
+			shieldWin.Show()
+			return nil
+		},
+		OpenExternalURL: func(targetURL string) error {
+			return wailsApp.Browser.OpenURL(targetURL)
+		},
+		ProbeCurrentUser: func(ctx context.Context) (string, string, string, error) {
+			return adapter.FetchCurrentUser(ctx)
+		},
+		ProbeSiteMetadata: func(ctx context.Context) error {
+			_, err := topicSvc.GetSiteMetadata(ctx)
+			return err
+		},
+	})
 
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "LD Studio",

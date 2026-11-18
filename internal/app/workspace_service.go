@@ -59,7 +59,8 @@ func (s *WorkspaceService) LoadOrDefaultLayout(ctx context.Context, layoutID str
 	return layout
 }
 
-// DefaultBrowseLayout builds the default Phase 0 workspace showing a topic list, reading window, and floating composer.
+// DefaultBrowseLayout builds a compact, full-space workspace:
+// left docked topic list, center docked reading panel, and right full-height vertical notifications strip.
 func DefaultBrowseLayout(accountScope string, now time.Time) domain.WorkspaceLayout {
 	return domain.WorkspaceLayout{
 		SchemaVersion:  CurrentLayoutSchemaVersion,
@@ -78,32 +79,20 @@ func DefaultBrowseLayout(accountScope string, now time.Time) domain.WorkspaceLay
 				DisplayMode: "docked",
 				ViewState:   "normal",
 				DockRegion:  "left",
-				Bounds:      domain.WindowBounds{X: 0, Y: 0, Width: 360, Height: 640},
+				Bounds:      domain.WindowBounds{X: 0, Y: 0, Width: 310, Height: 640},
 				ZIndex:      1,
 			},
 			{
 				InstanceID:    "topic-1001",
 				PanelType:     "topic",
-				Title:         "欢迎来到 LD Studio：Windows 工作区架构与阅读体验",
+				Title:         "主题阅读",
 				ResourceKey:   accountScope + ":topic:1001",
-				DisplayMode:   "floating",
+				DisplayMode:   "docked",
 				ViewState:     "normal",
-				Bounds:        domain.WindowBounds{X: 380, Y: 24, Width: 620, Height: 520},
-				RestoreBounds: domain.WindowBounds{X: 380, Y: 24, Width: 620, Height: 520},
-				ZIndex:        10,
-				TopicID:       1001,
-			},
-			{
-				InstanceID:    "composer-demo",
-				PanelType:     "composer",
-				Title:         "回复草稿",
-				ResourceKey:   accountScope + ":draft:draft-welcome",
-				DisplayMode:   "floating",
-				ViewState:     "normal",
-				Bounds:        domain.WindowBounds{X: 500, Y: 240, Width: 520, Height: 340},
-				RestoreBounds: domain.WindowBounds{X: 500, Y: 240, Width: 520, Height: 340},
-				ZIndex:        11,
-				DraftID:       "draft-welcome",
+				DockRegion:    "center",
+				Bounds:        domain.WindowBounds{X: 318, Y: 0, Width: 560, Height: 640},
+				RestoreBounds: domain.WindowBounds{X: 330, Y: 24, Width: 620, Height: 520},
+				ZIndex:        2,
 				TopicID:       1001,
 			},
 			{
@@ -111,12 +100,12 @@ func DefaultBrowseLayout(accountScope string, now time.Time) domain.WorkspaceLay
 				PanelType:     "notifications",
 				Title:         "通知",
 				ResourceKey:   accountScope + ":notifications",
-				DisplayMode:   "floating",
-				ViewState:     "minimized",
-				Bounds:        domain.WindowBounds{X: 160, Y: 80, Width: 400, Height: 420},
-				RestoreBounds: domain.WindowBounds{X: 160, Y: 80, Width: 400, Height: 420},
-				ZIndex:        8,
-				UnreadBadge:   2,
+				DisplayMode:   "docked",
+				ViewState:     "normal",
+				DockRegion:    "right",
+				Bounds:        domain.WindowBounds{X: 886, Y: 0, Width: 268, Height: 640},
+				RestoreBounds: domain.WindowBounds{X: 720, Y: 24, Width: 340, Height: 520},
+				ZIndex:        3,
 			},
 		},
 	}

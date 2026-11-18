@@ -15,6 +15,11 @@ type FeedFetcher interface {
 	FetchTopic(ctx context.Context, siteID string, topicID int64, aroundPostNumber int) (domain.TopicDetail, error)
 }
 
+// SiteMetadataFetcher optionally loads categories and tags from Discourse.
+type SiteMetadataFetcher interface {
+	FetchSiteMetadata(ctx context.Context) (domain.SiteMetadata, error)
+}
+
 // TopicService manages topic discovery queries, deduplicated pagination, shared topic entities,
 // window-local read anchors, and active-window ReadTracker arbitration (B01, B02, B03).
 type TopicService struct {
@@ -27,6 +32,7 @@ type TopicService struct {
 
 	activeFeedGenerations map[string]int64
 	feedPages             map[string][]domain.TopicSummary
+	categoryNames         map[int64]string
 	readTracker           *ReadTracker
 }
 
@@ -43,8 +49,27 @@ func NewTopicService(sessions *session.Manager, cache domain.CacheRepository, fe
 		events:                events,
 		activeFeedGenerations: make(map[string]int64),
 		feedPages:             make(map[string][]domain.TopicSummary),
+		categoryNames:         make(map[int64]string),
 		readTracker:           NewReadTracker(clock),
 	}
+}
+
+// GetSiteMetadata loads real Linux.do categories and tags for the left navigation rail.
+func (s *TopicService) GetSiteMetadata(ctx context.Context) (domain.SiteMetadata, error) {
+	metaFetcher, ok := s.fetcher.(SiteMetadataFetcher)
+	if !ok {
+		return domain.SiteMetadata{SiteID: s.sessions.Current().SiteID}, nil
+	}
+	meta, err := metaFetcher.FetchSiteMetadata(ctx)
+	if err != nil {
+		return domain.SiteMetadata{}, err
+	}
+	s.mu.Lock()
+	for _, c := range meta.Categories {
+		s.categoryNames[c.ID] = c.Name
+	}
+	s.mu.Unlock()
+	return meta, nil
 }
 
 // LoadFeed enforces query generation ordering and deduplicates paginated topics by ID (B01).
@@ -92,6 +117,11 @@ func (s *TopicService) LoadFeed(ctx context.Context, windowInstanceID string, qu
 	for _, t := range page.Topics {
 		if _, dup := seen[t.ID]; !dup {
 			seen[t.ID] = struct{}{}
+			if t.CategoryName == "" {
+				if catName, exists := s.categoryNames[t.CategoryID]; exists {
+					t.CategoryName = catName
+				}
+			}
 			merged = append(merged, t)
 		}
 	}
