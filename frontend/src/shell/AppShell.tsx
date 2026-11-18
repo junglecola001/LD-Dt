@@ -413,10 +413,10 @@ export function AppShell() {
             <div className={styles.navTaxonomy} aria-label="Linux.do 分类与标签">
               <div className={styles.navSectionHeader}>
                 <span>分类</span>
-                <span className="tabular-nums">{siteMeta?.categories.length ?? 0}</span>
+                <span className="tabular-nums">{siteMeta?.categories?.length ?? 0}</span>
               </div>
               <div>
-                {siteMeta?.categories.slice(0, 14).map((cat) => {
+                {(siteMeta?.categories ?? []).slice(0, 14).map((cat) => {
                   const active = feedFilter.filter === 'category' && feedFilter.categoryId === cat.id;
                   return (
                     <button
@@ -450,14 +450,14 @@ export function AppShell() {
                 })}
               </div>
 
-              {siteMeta && siteMeta.tags.length > 0 && (
+              {siteMeta && (siteMeta.tags?.length ?? 0) > 0 && (
                 <>
                   <div className={styles.navSectionHeader}>
                     <span>标签</span>
-                    <span className="tabular-nums">{siteMeta.tags.length}</span>
+                    <span className="tabular-nums">{siteMeta.tags?.length ?? 0}</span>
                   </div>
                   <div className={styles.tagCloud}>
-                    {siteMeta.tags.slice(0, 16).map((tag) => {
+                    {(siteMeta.tags ?? []).slice(0, 16).map((tag) => {
                       const active = feedFilter.filter === 'tag' && feedFilter.tag === tag.name;
                       return (
                         <button

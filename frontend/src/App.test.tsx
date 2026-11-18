@@ -25,7 +25,7 @@ describe('AppShell & Composer IME Guard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /过盾 \/ 连接/ }));
     expect(screen.getByRole('dialog', { name: 'Linux.do 连接与过盾中心' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '打开内置过盾窗口' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开独立过盾窗口' })).toBeInTheDocument();
   });
 
   it('does not submit on Ctrl+Enter while IME composition is active', async () => {

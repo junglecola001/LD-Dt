@@ -6,16 +6,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/junglecola001/LD-Dt/internal/app"
 	"github.com/junglecola001/LD-Dt/internal/discourse"
 	"github.com/junglecola001/LD-Dt/internal/domain"
 	"github.com/junglecola001/LD-Dt/internal/network"
+	"github.com/junglecola001/LD-Dt/internal/platform/shield"
 	"github.com/junglecola001/LD-Dt/internal/session"
 	"github.com/junglecola001/LD-Dt/internal/storage"
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -99,39 +98,13 @@ func main() {
 	})
 	emitter.app = wailsApp
 
-	var shieldMu sync.Mutex
-	var shieldWin *application.WebviewWindow
-
 	authSvc.SetHooks(app.AuthBridgeHooks{
 		Transport: transport,
 		OpenShieldWindow: func(targetURL string) error {
-			shieldMu.Lock()
-			defer shieldMu.Unlock()
-			if shieldWin != nil {
-				shieldWin.SetURL(targetURL)
-				shieldWin.Show()
-				shieldWin.Focus()
-				return nil
-			}
-			// Isolated secondary WebView2 window with AllowSimpleEventEmit disabled (plan.md 7.3).
-			shieldWin = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-				Name:                 "ld-shield-host",
-				Title:                "LD Studio · 站点验证与登录",
-				Width:                540,
-				Height:               680,
-				AlwaysOnTop:          true,
-				AllowSimpleEventEmit: false,
-				BackgroundColour:     application.NewRGB(250, 249, 245),
-				URL:                  targetURL,
-			})
-			shieldWin.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
-				shieldMu.Lock()
-				shieldWin = nil
-				shieldMu.Unlock()
-			})
-			shieldWin.Center()
-			shieldWin.Show()
-			return nil
+			// Launch an isolated native Edge app window outside Wails's request
+			// interceptor so Cloudflare Turnstile / login never hit Wails
+			// x-wails-window-id headers or WebView2 visibility white screens (plan.md 7.3).
+			return shield.LaunchWindow(targetURL, dataDir, wailsApp.Browser.OpenURL)
 		},
 		OpenExternalURL: func(targetURL string) error {
 			return wailsApp.Browser.OpenURL(targetURL)

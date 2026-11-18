@@ -49,6 +49,12 @@ func (a *Adapter) FetchSiteMetadata(ctx context.Context) (domain.SiteMetadata, e
 	if err != nil {
 		return domain.SiteMetadata{}, err
 	}
+	if meta.Categories == nil {
+		meta.Categories = []domain.CategoryItem{}
+	}
+	if meta.Tags == nil {
+		meta.Tags = []domain.TagItem{}
+	}
 
 	// Best-effort /tags.json enrichment matching FluxDO _categories.dart#getSiteTagGroups.
 	if meta.CanTagTopics {

@@ -81,11 +81,11 @@ export function ShieldModal({
       await bridge.openShieldWindow(mode);
       setFeedback(
         mode === 'challenge'
-          ? '已打开内置过盾窗口：请在窗口内完成 Cloudflare 验证，完成后点击下方“单次探测恢复”。'
-          : '已打开内置登录窗口：登录 Linux.do 后请关闭或切换回主界面，若仍受 TLS 盾拦截可导入 Cookie。',
+          ? '已打开独立 Edge 过盾窗口（与主进程隔离，避免白屏）：完成 Cloudflare 验证后可点“单次探测恢复”；若站点启用 TLS 绑定仍拦截原生 HTTP，请展开下方导入 Cookie 与 User-Agent。'
+          : '已打开独立 Edge 登录窗口：登录 Linux.do 后若仍提示验证，请点击“单次探测恢复”或展开下方导入浏览器 Cookie（_t / _forum_session / cf_clearance）与 User-Agent。',
       );
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : '无法打开内置验证窗口');
+      setFeedback(err instanceof Error ? err.message : '无法打开独立验证窗口');
     }
   };
 
@@ -165,11 +165,11 @@ export function ShieldModal({
           <div className={styles.actionRow}>
             <Button variant="primary" onClick={() => void handleOpenBuiltInShield('challenge')} disabled={!inDesktop || busy}>
               <ShieldCheck size={15} />
-              打开内置过盾窗口
+              打开独立过盾窗口
             </Button>
             <Button variant="secondary" onClick={() => void handleOpenBuiltInShield('login')} disabled={!inDesktop || busy}>
               <SignIn size={15} />
-              内置登录窗口
+              独立登录窗口
             </Button>
             <Button
               variant="secondary"
