@@ -1,6 +1,6 @@
 import type { ResizeHandle, SnapGuide, ViewportSize, WindowBounds, WindowState } from './types';
 
-export const MIN_WINDOW_WIDTH = 300;
+export const MIN_WINDOW_WIDTH = 220;
 export const MIN_WINDOW_HEIGHT = 220;
 export const TITLEBAR_HEIGHT = 32;
 export const SNAP_THRESHOLD = 8;

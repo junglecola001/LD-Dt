@@ -131,19 +131,28 @@ export function buildPresetWindows(preset: WorkspacePresetId, viewport: Viewport
   }
 
   // Default compact "browse" layout:
-  // Docked left topic list + docked center reading view + docked right vertical notifications strip (full height)
+  // All three panels stay floating (draggable & edge-resizable) while tiling
+  // seamlessly across the full viewport, with notifications as a full-height right strip.
+  const gap = 6;
+  const fullH = Math.max(260, h - gap * 2);
+  const availW = Math.max(760, w - gap * 4);
+  const leftW = Math.min(316, Math.max(250, Math.round(availW * 0.27)));
+  const rightW = Math.min(264, Math.max(220, Math.round(availW * 0.22)));
+  const centerX = gap + leftW + gap;
+  const centerW = Math.max(280, w - centerX - rightW - gap * 2);
+  const rightX = centerX + centerW + gap;
+
   return [
     {
       instanceId: 'feed-latest',
       panelType: 'topicList',
       title: '最新话题',
       resourceKey: 'feed:latest',
-      displayMode: 'docked',
+      displayMode: 'floating',
       viewState: 'normal',
-      dockRegion: 'left',
-      bounds: { x: 0, y: 0, width: 300, height: h },
-      restoreBounds: { x: 24, y: 24, width: 340, height: Math.min(520, h - 48) },
-      zIndex: 1,
+      bounds: { x: gap, y: gap, width: leftW, height: fullH },
+      restoreBounds: { x: gap, y: gap, width: leftW, height: fullH },
+      zIndex: 11,
       pinned: false,
     },
     {
@@ -151,12 +160,11 @@ export function buildPresetWindows(preset: WorkspacePresetId, viewport: Viewport
       panelType: 'topic',
       title: '主题阅读',
       resourceKey: 'topic:1001',
-      displayMode: 'docked',
+      displayMode: 'floating',
       viewState: 'normal',
-      dockRegion: 'center',
-      bounds: { x: 306, y: 0, width: Math.max(320, w - 580), height: h },
-      restoreBounds: { x: 180, y: 24, width: Math.min(640, w - 220), height: Math.min(520, h - 48) },
-      zIndex: 2,
+      bounds: { x: centerX, y: gap, width: centerW, height: fullH },
+      restoreBounds: { x: centerX, y: gap, width: centerW, height: fullH },
+      zIndex: 12,
       pinned: false,
       topicId: 1001,
     },
@@ -165,12 +173,11 @@ export function buildPresetWindows(preset: WorkspacePresetId, viewport: Viewport
       panelType: 'notifications',
       title: '通知',
       resourceKey: 'notifications:main',
-      displayMode: 'docked',
+      displayMode: 'floating',
       viewState: 'normal',
-      dockRegion: 'right',
-      bounds: { x: Math.max(600, w - 268), y: 0, width: 268, height: h },
-      restoreBounds: { x: Math.max(40, w - 340), y: 24, width: 310, height: Math.min(520, h - 48) },
-      zIndex: 3,
+      bounds: { x: rightX, y: gap, width: Math.max(220, w - rightX - gap), height: fullH },
+      restoreBounds: { x: rightX, y: gap, width: Math.max(220, w - rightX - gap), height: fullH },
+      zIndex: 13,
       pinned: false,
     },
   ];

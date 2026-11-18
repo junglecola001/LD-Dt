@@ -155,6 +155,7 @@ interface WorkspaceStore {
   topPinnedZ: number;
   keyboardMoveTargetId: string | null;
   feedFilter: ActiveFeedFilter;
+  layoutDirty: boolean;
 
   setFeedFilter: (filter: ActiveFeedFilter) => void;
   setViewport: (viewport: ViewportSize) => void;
@@ -207,6 +208,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   topPinnedZ: 110,
   keyboardMoveTargetId: null,
   feedFilter: { filter: 'latest' },
+  layoutDirty: false,
 
   setFeedFilter: (feedFilter) =>
     set((s) => {
@@ -233,14 +235,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }),
 
   setViewport: (viewport) =>
-    set((s) => ({
-      viewport,
-      navCollapsed: viewport.width < 960 ? true : s.navCollapsed,
-      windows: s.windows.map((w) => ({
-        ...w,
-        bounds: clampBoundsToViewport(w.bounds, viewport),
-      })),
-    })),
+    set((s) => {
+      if (!s.layoutDirty && s.presetId === 'browse') {
+        const refit = buildPresetWindows('browse', viewport).map((presetWin) => {
+          const existing = s.windows.find((w) => w.instanceId === presetWin.instanceId);
+          if (!existing) return presetWin;
+          return {
+            ...presetWin,
+            title: existing.title,
+            resourceKey: existing.resourceKey,
+            topicId: existing.topicId,
+            targetPostNumber: existing.targetPostNumber,
+            viewState: existing.viewState,
+            zIndex: existing.zIndex,
+          };
+        });
+        return {
+          viewport,
+          navCollapsed: viewport.width < 960 ? true : s.navCollapsed,
+          windows: refit,
+        };
+      }
+      return {
+        viewport,
+        navCollapsed: viewport.width < 960 ? true : s.navCollapsed,
+        windows: s.windows.map((w) => ({
+          ...w,
+          bounds: clampBoundsToViewport(w.bounds, viewport),
+        })),
+      };
+    }),
 
   toggleNavCollapsed: () => set((s) => ({ navCollapsed: !s.navCollapsed })),
 
@@ -290,6 +314,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   setWindowBounds: (instanceId, bounds) =>
     set((s) => ({
+      layoutDirty: true,
       windows: s.windows.map((w) =>
         w.instanceId === instanceId
           ? {
@@ -412,11 +437,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const existingSameTopic = !opts?.newWindow
       ? s.windows.find((w) => w.panelType === 'topic' && w.topicId === topicId)
       : undefined;
-    const primaryDockedTopic =
+    const primaryTopicPane =
       !opts?.newWindow && !existingSameTopic
-        ? s.windows.find((w) => w.panelType === 'topic' && w.displayMode === 'docked')
+        ? s.windows.find(
+            (w) => w.panelType === 'topic' && (w.displayMode === 'docked' || w.instanceId === 'topic-1001'),
+          )
         : undefined;
-    const targetWin = existingSameTopic ?? primaryDockedTopic;
+    const targetWin = existingSameTopic ?? primaryTopicPane;
 
     if (targetWin) {
       set((cur) => ({
@@ -549,6 +576,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return {
         undoSnapshot: snapshotForUndo(s),
         presetId,
+        layoutDirty: false,
         windows: nextWindows,
         activeInstanceId: nextWindows.find((w) => w.viewState !== 'minimized')?.instanceId ?? null,
       };

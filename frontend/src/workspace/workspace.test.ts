@@ -28,18 +28,17 @@ describe('Workspace Geometry & W01-W12 Rules', () => {
     expect(useWorkspaceStore.getState().activeInstanceId).toBe('composer-welcome');
   });
 
-  it('uses compact 3-column browse preset with right vertical notifications strip and reuses docked topic pane', () => {
+  it('uses compact 3-column floating browse preset with right vertical notifications strip and reuses primary topic pane', () => {
     const state = useWorkspaceStore.getState();
     const topicList = state.windows.find((w) => w.panelType === 'topicList');
     const topic = state.windows.find((w) => w.panelType === 'topic');
     const notifications = state.windows.find((w) => w.panelType === 'notifications');
 
-    expect(topicList?.displayMode).toBe('docked');
-    expect(topicList?.dockRegion).toBe('left');
-    expect(topic?.displayMode).toBe('docked');
-    expect(topic?.dockRegion).toBe('center');
-    expect(notifications?.displayMode).toBe('docked');
-    expect(notifications?.dockRegion).toBe('right');
+    expect(topicList?.displayMode).toBe('floating');
+    expect(topic?.displayMode).toBe('floating');
+    expect(notifications?.displayMode).toBe('floating');
+    expect(notifications!.bounds.x).toBeGreaterThan(topic!.bounds.x);
+    expect(notifications!.bounds.height).toBe(topicList!.bounds.height);
 
     state.setFeedFilter({ filter: 'category', categoryId: 2, categorySlug: 'design', categoryName: '界面设计' });
     expect(useWorkspaceStore.getState().feedFilter.categoryName).toBe('界面设计');
