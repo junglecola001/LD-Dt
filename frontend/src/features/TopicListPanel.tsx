@@ -1,21 +1,43 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowClockwise, Plus } from '@phosphor-icons/react';
+import { ArrowClockwise, Plus, X } from '@phosphor-icons/react';
 import { getDesktopBridge } from '../bridge';
-import { EmptyState, IconButton } from '../components/Primitives';
+import { Button, EmptyState, IconButton } from '../components/Primitives';
 import { useWorkspaceStore } from '../workspace/store';
 import styles from './TopicListPanel.module.css';
 
-export function TopicListPanel({ instanceId }: { instanceId: string }) {
-  const [filter, setFilter] = useState<'latest' | 'unread' | 'top'>('latest');
+interface TopicListPanelProps {
+  instanceId: string;
+  onOpenShield?: () => void;
+}
+
+export function TopicListPanel({ instanceId, onOpenShield }: TopicListPanelProps) {
   const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const openTopicWindow = useWorkspaceStore((s) => s.openTopicWindow);
+  const feedFilter = useWorkspaceStore((s) => s.feedFilter);
+  const setFeedFilter = useWorkspaceStore((s) => s.setFeedFilter);
 
   const bridge = getDesktopBridge();
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['feed', filter],
-    queryFn: () => bridge.loadFeed(instanceId, { filter, page: 0, queryGeneration: 1 }),
+    queryKey: [
+      'feed',
+      bridge.isMock ? 'mock' : 'real',
+      feedFilter.filter,
+      feedFilter.categoryId ?? 0,
+      feedFilter.tag ?? '',
+    ],
+    queryFn: () =>
+      bridge.loadFeed(instanceId, {
+        filter: feedFilter.filter,
+        categoryId: feedFilter.categoryId,
+        categorySlug: feedFilter.categorySlug,
+        tag: feedFilter.tag,
+        page: 0,
+        queryGeneration: 1,
+      }),
   });
+
+  const activeSubMode = feedFilter.filter === 'unread' || feedFilter.filter === 'top' ? feedFilter.filter : 'latest';
 
   return (
     <div className={styles.container}>
@@ -26,9 +48,11 @@ export function TopicListPanel({ instanceId }: { instanceId: string }) {
               key={f}
               type="button"
               role="tab"
-              aria-selected={filter === f}
-              className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ''}`}
-              onClick={() => setFilter(f)}
+              aria-selected={activeSubMode === f && !feedFilter.categoryId && !feedFilter.tag}
+              className={`${styles.filterTab} ${
+                activeSubMode === f && !feedFilter.categoryId && !feedFilter.tag ? styles.filterTabActive : ''
+              }`}
+              onClick={() => setFeedFilter({ filter: f })}
             >
               {f === 'latest' ? '最新' : f === 'unread' ? '未读' : '热门'}
             </button>
@@ -48,11 +72,38 @@ export function TopicListPanel({ instanceId }: { instanceId: string }) {
         </div>
       </div>
 
+      {(feedFilter.categoryName || feedFilter.tag) && (
+        <div className={styles.activeChipBar}>
+          <span>
+            {feedFilter.categoryName ? `分类：${feedFilter.categoryName}` : `标签：#${feedFilter.tag}`}
+          </span>
+          <IconButton label="清除筛选" onClick={() => setFeedFilter({ filter: 'latest' })}>
+            <X size={13} />
+          </IconButton>
+        </div>
+      )}
+
       <div className={styles.list}>
         {isLoading && <EmptyState lead="正在加载话题" />}
-        {isError && <EmptyState lead="列表暂时无法读取" actionLabel="重试" onAction={() => void refetch()} />}
+        {isError && (
+          <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <p className="serif-title" style={{ margin: 0, fontSize: '17px' }}>
+              列表请求受限或暂不可达
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {onOpenShield && (
+                <Button variant="primary" onClick={onOpenShield}>
+                  打开过盾界面
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => void refetch()}>
+                重试
+              </Button>
+            </div>
+          </div>
+        )}
         {!isLoading && !isError && data && data.topics.length === 0 && (
-          <EmptyState lead="当前筛选没有话题" actionLabel="回到最新" onAction={() => setFilter('latest')} />
+          <EmptyState lead="当前筛选没有话题" actionLabel="回到最新" onAction={() => setFeedFilter({ filter: 'latest' })} />
         )}
         {!isLoading &&
           !isError &&
@@ -66,20 +117,22 @@ export function TopicListPanel({ instanceId }: { instanceId: string }) {
               >
                 <button
                   type="button"
-                  style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0 }}
+                  className={styles.rowMainBtn}
                   onClick={() => openTopicWindow(topic.id, topic.title)}
                 >
-                  <div className={styles.rowMain}>
-                    <p className={styles.rowTitle} title={topic.title}>
-                      {topic.title}
-                    </p>
-                    <div className={styles.rowMeta}>
-                      <span>{topic.categoryName}</span>
-                      <span>·</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {topic.authorUsername}
-                      </span>
-                    </div>
+                  <p className={styles.rowTitle} title={topic.title}>
+                    {topic.title}
+                  </p>
+                  <div className={styles.rowMeta}>
+                    {topic.categoryName && (
+                      <>
+                        <span className={styles.categoryLabel}>{topic.categoryName}</span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span className={styles.authorLabel} title={topic.authorUsername}>
+                      {topic.authorUsername}
+                    </span>
                   </div>
                 </button>
                 <div className={styles.rowBadges}>

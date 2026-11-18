@@ -11,10 +11,12 @@ export function TopicPanel({
   instanceId,
   topicId,
   targetPostNumber,
+  onOpenShield,
 }: {
   instanceId: string;
   topicId: number;
   targetPostNumber?: number;
+  onOpenShield?: () => void;
 }) {
   const [serifReading, setSerifReading] = useState(false);
   const [showFind, setShowFind] = useState(false);
@@ -24,7 +26,7 @@ export function TopicPanel({
   const bridge = getDesktopBridge();
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['topic', topicId, targetPostNumber ?? 0],
+    queryKey: ['topic', bridge.isMock ? 'mock' : 'real', topicId, targetPostNumber ?? 0],
     queryFn: () => bridge.openTopic(instanceId, topicId, targetPostNumber),
   });
 
@@ -39,7 +41,23 @@ export function TopicPanel({
 
   if (isLoading) return <EmptyState lead="正在打开主题" />;
   if (isError || !data) {
-    return <EmptyState lead="主题内容暂时无法打开" actionLabel="重试" onAction={() => void refetch()} />;
+    return (
+      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <p className="serif-title" style={{ margin: 0, fontSize: '20px' }}>
+          主题内容暂时无法打开
+        </p>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {onOpenShield && (
+            <Button variant="primary" onClick={onOpenShield}>
+              打开过盾界面
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => void refetch()}>
+            重试
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const { detail, anchor } = data;

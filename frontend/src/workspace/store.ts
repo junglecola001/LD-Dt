@@ -136,6 +136,14 @@ export const useDraftBufferStore = create<DraftBufferStore>((set, get) => ({
     }),
 }));
 
+export interface ActiveFeedFilter {
+  filter: 'latest' | 'unread' | 'top' | 'new' | 'category' | 'tag';
+  categoryId?: number;
+  categorySlug?: string;
+  categoryName?: string;
+  tag?: string;
+}
+
 interface WorkspaceStore {
   presetId: WorkspacePresetId;
   viewport: ViewportSize;
@@ -146,7 +154,9 @@ interface WorkspaceStore {
   topFloatingZ: number;
   topPinnedZ: number;
   keyboardMoveTargetId: string | null;
+  feedFilter: ActiveFeedFilter;
 
+  setFeedFilter: (filter: ActiveFeedFilter) => void;
   setViewport: (viewport: ViewportSize) => void;
   toggleNavCollapsed: () => void;
   focusWindow: (instanceId: string) => void;
@@ -191,11 +201,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   viewport: DEFAULT_VIEWPORT,
   navCollapsed: false,
   windows: buildPresetWindows('browse', DEFAULT_VIEWPORT),
-  activeInstanceId: 'composer-welcome',
+  activeInstanceId: 'topic-1001',
   undoSnapshot: null,
   topFloatingZ: 20,
   topPinnedZ: 110,
   keyboardMoveTargetId: null,
+  feedFilter: { filter: 'latest' },
+
+  setFeedFilter: (feedFilter) =>
+    set((s) => {
+      const hasList = s.windows.some((w) => w.panelType === 'topicList');
+      const nextWindows = hasList
+        ? s.windows.map((w) =>
+            w.panelType === 'topicList'
+              ? {
+                  ...w,
+                  viewState: w.viewState === 'minimized' ? 'normal' : w.viewState,
+                  title: feedFilter.categoryName
+                    ? `分类：${feedFilter.categoryName}`
+                    : feedFilter.tag
+                      ? `标签：#${feedFilter.tag}`
+                      : '最新话题',
+                }
+              : w,
+          )
+        : s.windows;
+      return {
+        feedFilter,
+        windows: nextWindows,
+      };
+    }),
 
   setViewport: (viewport) =>
     set((s) => ({
@@ -374,17 +409,26 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   openTopicWindow: (topicId, title, opts) => {
     const s = get();
-    const existing = !opts?.newWindow
+    const existingSameTopic = !opts?.newWindow
       ? s.windows.find((w) => w.panelType === 'topic' && w.topicId === topicId)
       : undefined;
-    if (existing) {
+    const primaryDockedTopic =
+      !opts?.newWindow && !existingSameTopic
+        ? s.windows.find((w) => w.panelType === 'topic' && w.displayMode === 'docked')
+        : undefined;
+    const targetWin = existingSameTopic ?? primaryDockedTopic;
+
+    if (targetWin) {
       set((cur) => ({
-        activeInstanceId: existing.instanceId,
+        activeInstanceId: targetWin.instanceId,
         topFloatingZ: cur.topFloatingZ + 1,
         windows: cur.windows.map((w) =>
-          w.instanceId === existing.instanceId
+          w.instanceId === targetWin.instanceId
             ? {
                 ...w,
+                topicId,
+                title,
+                resourceKey: `topic:${topicId}`,
                 viewState: w.viewState === 'minimized' ? 'normal' : w.viewState,
                 targetPostNumber: opts?.targetPostNumber ?? w.targetPostNumber,
                 zIndex: w.displayMode === 'floating' ? cur.topFloatingZ + 1 : w.zIndex,
@@ -392,7 +436,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             : w,
         ),
       }));
-      return existing.instanceId;
+      return targetWin.instanceId;
     }
 
     const offset = (s.windows.length % 5) * 24;

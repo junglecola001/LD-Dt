@@ -16,6 +16,7 @@ describe('Workspace Geometry & W01-W12 Rules', () => {
   });
 
   it('W01: focuses overlapping windows and increments zIndex monotonically', () => {
+    useWorkspaceStore.getState().applyPreset('freeform');
     const store = useWorkspaceStore.getState();
     store.focusWindow('topic-1001');
     const z1 = useWorkspaceStore.getState().windows.find((w) => w.instanceId === 'topic-1001')!.zIndex;
@@ -25,6 +26,34 @@ describe('Workspace Geometry & W01-W12 Rules', () => {
 
     expect(z2).toBeGreaterThan(z1);
     expect(useWorkspaceStore.getState().activeInstanceId).toBe('composer-welcome');
+  });
+
+  it('uses compact 3-column browse preset with right vertical notifications strip and reuses docked topic pane', () => {
+    const state = useWorkspaceStore.getState();
+    const topicList = state.windows.find((w) => w.panelType === 'topicList');
+    const topic = state.windows.find((w) => w.panelType === 'topic');
+    const notifications = state.windows.find((w) => w.panelType === 'notifications');
+
+    expect(topicList?.displayMode).toBe('docked');
+    expect(topicList?.dockRegion).toBe('left');
+    expect(topic?.displayMode).toBe('docked');
+    expect(topic?.dockRegion).toBe('center');
+    expect(notifications?.displayMode).toBe('docked');
+    expect(notifications?.dockRegion).toBe('right');
+
+    state.setFeedFilter({ filter: 'category', categoryId: 2, categorySlug: 'design', categoryName: '界面设计' });
+    expect(useWorkspaceStore.getState().feedFilter.categoryName).toBe('界面设计');
+    expect(useWorkspaceStore.getState().windows.find((w) => w.panelType === 'topicList')?.title).toContain('界面设计');
+
+    state.openTopicWindow(1002, '测试复用中心阅读区');
+    const afterNormalOpen = useWorkspaceStore.getState().windows.filter((w) => w.panelType === 'topic');
+    expect(afterNormalOpen).toHaveLength(1);
+    expect(afterNormalOpen[0]?.topicId).toBe(1002);
+
+    state.openTopicWindow(1003, '新窗口打开话题', { newWindow: true });
+    const afterNewWindowOpen = useWorkspaceStore.getState().windows.filter((w) => w.panelType === 'topic');
+    expect(afterNewWindowOpen).toHaveLength(2);
+    expect(afterNewWindowOpen.some((w) => w.displayMode === 'floating' && w.topicId === 1003)).toBe(true);
   });
 
   it('W02: enforces minimum dimensions when resizing', () => {
@@ -55,6 +84,7 @@ describe('Workspace Geometry & W01-W12 Rules', () => {
   });
 
   it('W06 & W09: docking, minimizing, and resetting layout never deletes draft buffer', () => {
+    useWorkspaceStore.getState().applyPreset('freeform');
     useDraftBufferStore.getState().updateBody('draft-welcome', '重要草稿正文内容');
     const store = useWorkspaceStore.getState();
 
@@ -66,6 +96,7 @@ describe('Workspace Geometry & W01-W12 Rules', () => {
   });
 
   it('W09 & W12: arranges floating windows and recovers offscreen bounds', () => {
+    useWorkspaceStore.getState().applyPreset('freeform');
     const viewport = { width: 1000, height: 600 };
     const store = useWorkspaceStore.getState();
     store.setWindowBounds('topic-1001', { x: 2500, y: 1800, width: 500, height: 400 });

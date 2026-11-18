@@ -3,30 +3,49 @@ import { getDesktopBridge } from '../bridge';
 import { Button, EmptyState } from '../components/Primitives';
 import { useWorkspaceStore } from '../workspace/store';
 
-export function NotificationsPanel() {
+export function NotificationsPanel({ onOpenShield }: { onOpenShield?: () => void }) {
   const bridge = getDesktopBridge();
   const queryClient = useQueryClient();
   const openTopicWindow = useWorkspaceStore((s) => s.openTopicWindow);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['notifications'],
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['notifications', bridge.isMock ? 'mock' : 'real'],
     queryFn: () => bridge.getNotifications(),
   });
 
   if (isLoading) return <EmptyState lead="正在同步通知" />;
-  if (!data || data.notifications.length === 0) {
+  if (isError) {
+    return (
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <p className="serif-title" style={{ margin: 0, fontSize: '16px' }}>
+          连接账号或过盾后同步通知
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {onOpenShield && (
+            <Button variant="primary" onClick={onOpenShield}>
+              连接 / 过盾
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => void refetch()}>
+            重试
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  if (!data || !data.notifications || data.notifications.length === 0) {
     return <EmptyState lead="暂时没有未读通知" />;
   }
 
   const handleOpen = async (id: number, topicId: number, postNumber: number, title: string) => {
     openTopicWindow(topicId, title, { targetPostNumber: postNumber });
     const updated = await bridge.markNotificationVisited(id, true);
-    queryClient.setQueryData(['notifications'], updated);
+    queryClient.setQueryData(['notifications', bridge.isMock ? 'mock' : 'real'], updated);
   };
 
   const handleMarkAll = async () => {
     const updated = await bridge.markAllNotificationsRead();
-    queryClient.setQueryData(['notifications'], updated);
+    queryClient.setQueryData(['notifications', bridge.isMock ? 'mock' : 'real'], updated);
   };
 
   return (
@@ -36,15 +55,15 @@ export function NotificationsPanel() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 12px',
+          padding: '6px 12px',
           borderBottom: '1px solid var(--line)',
         }}
       >
         <span className="tabular-nums" style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
           未读 {data.unreadCount} 条
         </span>
-        <Button variant="ghost" onClick={() => void handleMarkAll()}>
-          全部标为已读
+        <Button variant="ghost" style={{ height: 26, fontSize: 12 }} onClick={() => void handleMarkAll()}>
+          全部已读
         </Button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -58,7 +77,7 @@ export function NotificationsPanel() {
               gap: '8px',
               width: '100%',
               textAlign: 'left',
-              padding: '10px 12px',
+              padding: '9px 12px',
               border: 'none',
               borderBottom: '1px solid var(--line)',
               background: n.read ? 'transparent' : 'var(--accent-wash)',
@@ -79,7 +98,7 @@ export function NotificationsPanel() {
               />
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 500 }}>{n.topicTitle}</div>
+              <div style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.4 }}>{n.topicTitle}</div>
               <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: 2 }}>
                 @{n.actorUsername} · {n.excerpt}
               </div>

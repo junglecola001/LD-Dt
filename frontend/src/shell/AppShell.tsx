@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
@@ -9,17 +10,27 @@ import {
   Moon,
   NotePencil,
   Palette,
+  ShieldCheck,
+  ShieldWarning,
   SidebarSimple,
   Sun,
   WarningCircle,
 } from '@phosphor-icons/react';
-import { getDesktopBridge, type NetworkPhase, type NetworkStatusSnapshot } from '../bridge';
+import {
+  getDesktopBridge,
+  isWailsDesktopRuntime,
+  setDemoModeEnabled,
+  type NetworkPhase,
+  type NetworkStatusSnapshot,
+  type SiteSession,
+} from '../bridge';
 import { Button, IconButton } from '../components/Primitives';
 import uiStyles from '../components/ui.module.css';
 import { ComposerPanel } from '../features/ComposerPanel';
 import { DesignBaselinePanel } from '../features/DesignBaselinePanel';
 import { NotificationsPanel } from '../features/NotificationsPanel';
 import { SearchPanel } from '../features/SearchPanel';
+import { ShieldModal } from '../features/ShieldModal';
 import { TopicListPanel } from '../features/TopicListPanel';
 import { TopicPanel } from '../features/TopicPanel';
 import { useWorkspaceStore } from '../workspace/store';
@@ -38,8 +49,19 @@ export function AppShell() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [lowResource, setLowResource] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shieldOpen, setShieldOpen] = useState(false);
+  const [demoMode, setDemoMode] = useState(() => !isWailsDesktopRuntime());
   const [paletteFilter, setPaletteFilter] = useState('');
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
+  const [session, setSession] = useState<SiteSession>({
+    siteId: 'linux.do',
+    accountId: '',
+    username: '',
+    displayName: '',
+    sessionGeneration: 1,
+    status: 'anonymous',
+    isDemoData: getDesktopBridge().isMock,
+  });
   const [network, setNetwork] = useState<NetworkStatusSnapshot>({
     siteId: 'linux.do',
     phase: 'ready',
@@ -52,12 +74,14 @@ export function AppShell() {
   });
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   const presetId = useWorkspaceStore((s) => s.presetId);
   const viewport = useWorkspaceStore((s) => s.viewport);
   const navCollapsed = useWorkspaceStore((s) => s.navCollapsed);
   const windows = useWorkspaceStore((s) => s.windows);
   const activeInstanceId = useWorkspaceStore((s) => s.activeInstanceId);
+  const feedFilter = useWorkspaceStore((s) => s.feedFilter);
 
   const setViewport = useWorkspaceStore((s) => s.setViewport);
   const toggleNavCollapsed = useWorkspaceStore((s) => s.toggleNavCollapsed);
@@ -72,6 +96,14 @@ export function AppShell() {
   const openComposerWindow = useWorkspaceStore((s) => s.openComposerWindow);
   const openSingletonWindow = useWorkspaceStore((s) => s.openSingletonWindow);
   const setKeyboardMoveTarget = useWorkspaceStore((s) => s.setKeyboardMoveTarget);
+  const setFeedFilter = useWorkspaceStore((s) => s.setFeedFilter);
+
+  const bridge = getDesktopBridge();
+
+  const { data: siteMeta } = useQuery({
+    queryKey: ['siteMetadata', bridge.isMock ? 'mock' : 'real'],
+    queryFn: () => bridge.getSiteMetadata(),
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -82,8 +114,27 @@ export function AppShell() {
   }, [lowResource]);
 
   useEffect(() => {
-    void getDesktopBridge().getNetworkStatus().then(setNetwork);
-  }, []);
+    const active = getDesktopBridge();
+    void active.getSession().then(setSession);
+    void active.getNetworkStatus().then((snap) => {
+      setNetwork(snap);
+      if (!active.isMock && (snap.phase === 'challenge_required' || snap.phase === 'challenge_paused')) {
+        setShieldOpen(true);
+      }
+    });
+
+    const unsubNet = active.subscribeNetworkStatus?.((snap) => {
+      setNetwork(snap);
+      if (!active.isMock && (snap.phase === 'challenge_required' || snap.phase === 'challenge_paused')) {
+        setShieldOpen(true);
+      }
+    });
+    const unsubSess = active.subscribeSession?.(setSession);
+    return () => {
+      unsubNet?.();
+      unsubSess?.();
+    };
+  }, [demoMode]);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -132,23 +183,39 @@ export function AppShell() {
   }, [activeInstanceId, applyPreset, closeWindow, cycleFocus, openComposerWindow, openSingletonWindow, paletteOpen]);
 
   const handleNetworkPhaseChange = async (phase: NetworkPhase) => {
-    const bridge = getDesktopBridge();
-    if (bridge.simulateNetworkPhase) {
-      const next = await bridge.simulateNetworkPhase(phase);
+    const active = getDesktopBridge();
+    if (active.simulateNetworkPhase) {
+      const next = await active.simulateNetworkPhase(phase);
       setNetwork(next);
+    }
+  };
+
+  const handleToggleDemoMode = () => {
+    const nextDemo = !demoMode;
+    setDemoMode(nextDemo);
+    setDemoModeEnabled(nextDemo);
+    void queryClient.invalidateQueries();
+  };
+
+  const handleRecovered = (nextSess: SiteSession, nextNet: NetworkStatusSnapshot) => {
+    setSession(nextSess);
+    setNetwork(nextNet);
+    if (nextNet.phase === 'ready') {
+      void queryClient.invalidateQueries();
     }
   };
 
   const renderPanelContent = (win: WindowState) => {
     switch (win.panelType) {
       case 'topicList':
-        return <TopicListPanel instanceId={win.instanceId} />;
+        return <TopicListPanel instanceId={win.instanceId} onOpenShield={() => setShieldOpen(true)} />;
       case 'topic':
         return (
           <TopicPanel
             instanceId={win.instanceId}
             topicId={win.topicId ?? 1001}
             targetPostNumber={win.targetPostNumber}
+            onOpenShield={() => setShieldOpen(true)}
           />
         );
       case 'composer':
@@ -156,7 +223,7 @@ export function AppShell() {
       case 'search':
         return <SearchPanel instanceId={win.instanceId} />;
       case 'notifications':
-        return <NotificationsPanel />;
+        return <NotificationsPanel onOpenShield={() => setShieldOpen(true)} />;
       case 'designBaseline':
         return (
           <DesignBaselinePanel
@@ -173,9 +240,13 @@ export function AppShell() {
   };
 
   const dockedWindows = windows.filter((w) => w.displayMode === 'docked' && w.viewState !== 'minimized');
+  const leftDocked = dockedWindows.filter((w) => w.dockRegion === 'left');
+  const rightDocked = dockedWindows.filter((w) => w.dockRegion === 'right');
+  const centerDocked = dockedWindows.filter((w) => w.dockRegion !== 'left' && w.dockRegion !== 'right');
   const floatingWindows = windows.filter((w) => w.displayMode === 'floating' && w.viewState !== 'minimized');
 
   const commands = [
+    { id: 'shield', label: '打开过盾与连接中心', shortcut: '', run: () => setShieldOpen(true) },
     { id: 'new-draft', label: '新建主题草稿', shortcut: 'Ctrl+N', run: () => openComposerWindow({ mode: 'newTopic', title: '新建主题草稿' }) },
     { id: 'search', label: '打开全局搜索', shortcut: 'Ctrl+K', run: () => openSingletonWindow('search', '全局搜索') },
     { id: 'notif', label: '打开通知面板', shortcut: '', run: () => openSingletonWindow('notifications', '通知') },
@@ -186,13 +257,26 @@ export function AppShell() {
     { id: 'theme', label: theme === 'light' ? '切换到深色模式' : '切换到浅色模式', shortcut: '', run: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')) },
   ].filter((c) => !paletteFilter.trim() || c.label.toLowerCase().includes(paletteFilter.toLowerCase()));
 
+  const isShieldAlert =
+    !bridge.isMock &&
+    (network.phase === 'challenge_required' ||
+      network.phase === 'challenge_paused' ||
+      network.phase === 'cooling_down' ||
+      network.phase === 'auth_expired');
+
   return (
     <div className={styles.shell}>
       <header className={styles.appTitlebar}>
         <div className={styles.brandGroup}>
           <span className={styles.brandDot} aria-hidden="true" />
           <span>LD Studio</span>
-          {getDesktopBridge().isMock && <span className={styles.demoTag}>演示数据</span>}
+          {bridge.isMock ? (
+            <span className={styles.demoTag}>演示数据</span>
+          ) : (
+            <span className={styles.demoTag}>
+              {session.status === 'connected' ? `@${session.username}` : 'Linux.do 实时'}
+            </span>
+          )}
         </div>
         <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
           工作区：{PRESET_LABELS[presetId]}
@@ -261,17 +345,17 @@ export function AppShell() {
         </div>
 
         <div className={styles.barRight}>
+          <Button
+            variant={isShieldAlert ? 'primary' : 'ghost'}
+            style={{ height: 28 }}
+            onClick={() => setShieldOpen(true)}
+          >
+            {isShieldAlert ? <ShieldWarning size={15} /> : <ShieldCheck size={15} />}
+            过盾 / 连接
+          </Button>
           <Button variant="ghost" style={{ height: 28 }} onClick={() => openSingletonWindow('search', '全局搜索')}>
             <MagnifyingGlass size={15} />
             搜索
-          </Button>
-          <Button
-            variant="primary"
-            style={{ height: 28 }}
-            onClick={() => openComposerWindow({ mode: 'newTopic', title: '新建主题草稿' })}
-          >
-            <NotePencil size={15} />
-            新主题
           </Button>
           <IconButton
             label={theme === 'light' ? '切换到深色模式' : '切换到浅色模式'}
@@ -290,11 +374,14 @@ export function AppShell() {
           <div className={styles.navList}>
             <button
               type="button"
-              className={`${styles.navItem} ${styles.navItemActive}`}
-              onClick={() => openSingletonWindow('topicList', '最新话题')}
+              className={`${styles.navItem} ${!feedFilter.categoryId && !feedFilter.tag ? styles.navItemActive : ''}`}
+              onClick={() => {
+                setFeedFilter({ filter: 'latest' });
+                openSingletonWindow('topicList', '最新话题');
+              }}
             >
               <ListBullets size={16} />
-              {!navCollapsed && <span>话题</span>}
+              {!navCollapsed && <span>全部话题</span>}
             </button>
             <button
               type="button"
@@ -322,7 +409,83 @@ export function AppShell() {
             </button>
           </div>
 
-          <div className={styles.navList}>
+          {!navCollapsed && (
+            <div className={styles.navTaxonomy} aria-label="Linux.do 分类与标签">
+              <div className={styles.navSectionHeader}>
+                <span>分类</span>
+                <span className="tabular-nums">{siteMeta?.categories.length ?? 0}</span>
+              </div>
+              <div>
+                {siteMeta?.categories.slice(0, 14).map((cat) => {
+                  const active = feedFilter.filter === 'category' && feedFilter.categoryId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`${styles.categoryRow} ${active ? styles.categoryRowActive : ''}`}
+                      title={cat.description || cat.name}
+                      onClick={() =>
+                        setFeedFilter({
+                          filter: 'category',
+                          categoryId: cat.id,
+                          categorySlug: cat.slug,
+                          categoryName: cat.name,
+                        })
+                      }
+                    >
+                      <span className={styles.categoryLeft}>
+                        <span
+                          className={styles.categoryDot}
+                          style={{ background: cat.color ? `#${cat.color}` : 'var(--control-border)' }}
+                        />
+                        <span className={styles.categoryName}>{cat.name}</span>
+                      </span>
+                      {cat.topicCount > 0 && (
+                        <span className="tabular-nums" style={{ fontSize: 11, color: 'var(--ink-muted)' }}>
+                          {cat.topicCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {siteMeta && siteMeta.tags.length > 0 && (
+                <>
+                  <div className={styles.navSectionHeader}>
+                    <span>标签</span>
+                    <span className="tabular-nums">{siteMeta.tags.length}</span>
+                  </div>
+                  <div className={styles.tagCloud}>
+                    {siteMeta.tags.slice(0, 16).map((tag) => {
+                      const active = feedFilter.filter === 'tag' && feedFilter.tag === tag.name;
+                      return (
+                        <button
+                          key={tag.name}
+                          type="button"
+                          className={`${styles.tagChip} ${active ? styles.tagChipActive : ''}`}
+                          onClick={() => setFeedFilter({ filter: 'tag', tag: tag.name })}
+                        >
+                          <span>#{tag.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className={styles.navBottom}>
+            <Button
+              variant="primary"
+              style={{ width: '100%', justifyContent: navCollapsed ? 'center' : 'flex-start', padding: navCollapsed ? 0 : '0 12px' }}
+              title="新建主题草稿（Ctrl+N）"
+              onClick={() => openComposerWindow({ mode: 'newTopic', title: '新建主题草稿' })}
+            >
+              <NotePencil size={16} />
+              {!navCollapsed && <span>新主题</span>}
+            </Button>
             <button type="button" className={styles.navItem} onClick={() => setPaletteOpen(true)}>
               <MagnifyingGlass size={16} />
               {!navCollapsed && <span>命令面板</span>}
@@ -330,59 +493,94 @@ export function AppShell() {
           </div>
         </nav>
 
-        <main ref={viewportRef} className={styles.workspaceViewport}>
-          {dockedWindows.length > 0 && (
-            <div className={styles.dockHost}>
-              {dockedWindows.map((win) => (
-                <div
-                  key={win.instanceId}
-                  className={`${styles.dockSlot} ${
-                    win.dockRegion === 'left' && dockedWindows.length === 1 && floatingWindows.length > 0
-                      ? styles.dockSlotSide
-                      : ''
-                  }`}
-                >
-                  <WindowFrame
-                    win={win}
-                    active={activeInstanceId === win.instanceId}
-                    siblings={[]}
-                    viewport={viewport}
-                  >
-                    {renderPanelContent(win)}
-                  </WindowFrame>
-                </div>
-              ))}
+        <div className={styles.workspaceColumn}>
+          {network.phase !== 'ready' && (
+            <div className={styles.shieldBanner} role="alert">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShieldWarning size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
+                <span>
+                  {network.phase === 'cooling_down'
+                    ? `429 请求限流冷却中（剩余 ${network.retryAfterSeconds} 秒）`
+                    : network.message || '站点触发验证或连接受限'}
+                </span>
+              </div>
+              <Button variant="primary" style={{ height: 26, fontSize: 12 }} onClick={() => setShieldOpen(true)}>
+                打开过盾界面
+              </Button>
             </div>
           )}
 
-          <div className={styles.floatingHost}>
-            {floatingWindows.map((win) => {
-              const siblings = floatingWindows
-                .filter((other) => other.instanceId !== win.instanceId)
-                .map((other) => other.bounds);
-              return (
-                <WindowFrame
-                  key={win.instanceId}
-                  win={win}
-                  active={activeInstanceId === win.instanceId}
-                  siblings={siblings}
-                  viewport={viewport}
-                  onSnapGuidesChange={setSnapGuides}
-                >
-                  {renderPanelContent(win)}
-                </WindowFrame>
-              );
-            })}
-          </div>
+          <main ref={viewportRef} className={styles.workspaceViewport}>
+            {dockedWindows.length > 0 && (
+              <div className={styles.dockHost}>
+                {leftDocked.map((win) => (
+                  <div key={win.instanceId} className={styles.dockSlotLeft}>
+                    <WindowFrame
+                      win={win}
+                      active={activeInstanceId === win.instanceId}
+                      siblings={[]}
+                      viewport={viewport}
+                    >
+                      {renderPanelContent(win)}
+                    </WindowFrame>
+                  </div>
+                ))}
+                {centerDocked.map((win) => (
+                  <div key={win.instanceId} className={styles.dockSlotCenter}>
+                    <WindowFrame
+                      win={win}
+                      active={activeInstanceId === win.instanceId}
+                      siblings={[]}
+                      viewport={viewport}
+                    >
+                      {renderPanelContent(win)}
+                    </WindowFrame>
+                  </div>
+                ))}
+                {rightDocked.map((win) => (
+                  <div key={win.instanceId} className={styles.dockSlotRight}>
+                    <WindowFrame
+                      win={win}
+                      active={activeInstanceId === win.instanceId}
+                      siblings={[]}
+                      viewport={viewport}
+                    >
+                      {renderPanelContent(win)}
+                    </WindowFrame>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {snapGuides.map((g, idx) =>
-            g.axis === 'x' ? (
-              <div key={`gx-${idx}`} className={styles.snapGuideX} style={{ left: g.pos }} />
-            ) : (
-              <div key={`gy-${idx}`} className={styles.snapGuideY} style={{ top: g.pos }} />
-            ),
-          )}
-        </main>
+            <div className={styles.floatingHost}>
+              {floatingWindows.map((win) => {
+                const siblings = floatingWindows
+                  .filter((other) => other.instanceId !== win.instanceId)
+                  .map((other) => other.bounds);
+                return (
+                  <WindowFrame
+                    key={win.instanceId}
+                    win={win}
+                    active={activeInstanceId === win.instanceId}
+                    siblings={siblings}
+                    viewport={viewport}
+                    onSnapGuidesChange={setSnapGuides}
+                  >
+                    {renderPanelContent(win)}
+                  </WindowFrame>
+                );
+              })}
+            </div>
+
+            {snapGuides.map((g, idx) =>
+              g.axis === 'x' ? (
+                <div key={`gx-${idx}`} className={styles.snapGuideX} style={{ left: g.pos }} />
+              ) : (
+                <div key={`gy-${idx}`} className={styles.snapGuideY} style={{ top: g.pos }} />
+              ),
+            )}
+          </main>
+        </div>
       </div>
 
       <footer className={styles.windowBar} aria-label="窗口栏">
@@ -421,7 +619,9 @@ export function AppShell() {
           {network.phase !== 'ready' && <WarningCircle size={14} style={{ color: 'var(--warning)' }} />}
           <span>
             {network.phase === 'ready'
-              ? '在线 · 共享请求调度就绪'
+              ? bridge.isMock
+                ? '在线（演示数据）· 共享请求调度就绪'
+                : '在线（Linux.do）· 共享请求调度就绪'
               : network.message || '网络受限，仅展示本地缓存'}
           </span>
         </div>
@@ -429,6 +629,16 @@ export function AppShell() {
           窗口 {windows.length} · {viewport.width}×{viewport.height}
         </span>
       </div>
+
+      <ShieldModal
+        open={shieldOpen}
+        onOpenChange={setShieldOpen}
+        network={network}
+        session={session}
+        demoMode={demoMode}
+        onToggleDemoMode={handleToggleDemoMode}
+        onRecovered={handleRecovered}
+      />
 
       <Dialog.Root open={paletteOpen} onOpenChange={setPaletteOpen}>
         <Dialog.Portal>

@@ -5,17 +5,27 @@ import { MockDesktopBridge, setDesktopBridgeForTesting } from './bridge';
 import { ComposerPanel } from './features/ComposerPanel';
 
 describe('AppShell & Composer IME Guard', () => {
-  it('renders Phase 0 browse workspace with demo badge, topic window, composer window, and window bar', async () => {
+  it('renders compact 3-column browse workspace with right notifications strip, nav taxonomy, composer trigger, and shield modal', async () => {
     setDesktopBridgeForTesting(new MockDesktopBridge());
     render(<App />);
 
     expect(screen.getByText('LD Studio')).toBeInTheDocument();
     expect(screen.getByText('演示数据')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /欢迎来到 LD Studio/ })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /回复草稿/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '最新话题' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '主题阅读' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '通知' })).toBeInTheDocument();
+
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('在线');
+      expect(screen.getByText('#wails')).toBeInTheDocument();
+      expect(screen.getByText('在线（演示数据）· 共享请求调度就绪')).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole('button', { name: /新主题/ }));
+    expect(screen.getByRole('region', { name: '新建主题草稿' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /过盾 \/ 连接/ }));
+    expect(screen.getByRole('dialog', { name: 'Linux.do 连接与过盾中心' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开内置过盾窗口' })).toBeInTheDocument();
   });
 
   it('does not submit on Ctrl+Enter while IME composition is active', async () => {

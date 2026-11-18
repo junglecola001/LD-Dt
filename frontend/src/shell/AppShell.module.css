@@ -1,6 +1,6 @@
 .shell {
   display: grid;
-  grid-template-rows: 32px 40px 1fr 32px 24px;
+  grid-template-rows: 32px 40px 1fr 34px 24px;
   width: 100%;
   height: 100%;
   background: var(--canvas);
@@ -92,9 +92,11 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: var(--space-2);
   padding: var(--space-2);
   background: var(--canvas);
   border-right: 1px solid var(--line);
+  min-height: 0;
 }
 
 .navRailCollapsed {
@@ -106,6 +108,113 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex-shrink: 0;
+}
+
+.navTaxonomy {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.navSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 28px;
+  width: 100%;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-menu-item);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.categoryRow:hover {
+  background: var(--surface-hover);
+}
+
+.categoryRowActive {
+  background: var(--surface-muted);
+  font-weight: 500;
+}
+
+.categoryLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.categoryDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.categoryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 6px;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tagChip:hover {
+  background: var(--surface-hover);
+}
+
+.tagChipActive {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.navBottom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .navItem {
@@ -137,6 +246,25 @@
   font-weight: 500;
 }
 
+.workspaceColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.shieldBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px var(--space-3);
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+}
+
 .workspaceViewport {
   position: relative;
   flex: 1;
@@ -148,21 +276,30 @@
 
 .dockHost {
   display: flex;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  gap: 6px;
+  padding: 6px;
   width: 100%;
   height: 100%;
 }
 
-.dockSlot {
-  min-width: 300px;
+.dockSlotLeft {
+  flex: 0 0 304px;
+  min-width: 260px;
+  max-width: 38%;
   height: 100%;
-  flex: 1;
 }
 
-.dockSlotSide {
-  flex: 0 0 340px;
-  max-width: 45%;
+.dockSlotCenter {
+  flex: 1;
+  min-width: 300px;
+  height: 100%;
+}
+
+.dockSlotRight {
+  flex: 0 0 264px;
+  min-width: 240px;
+  max-width: 34%;
+  height: 100%;
 }
 
 .floatingHost {
@@ -199,6 +336,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 34px;
   padding: 0 var(--space-3);
   background: var(--surface-muted);
   border-top: 1px solid var(--line);
@@ -210,13 +348,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: 26px;
   max-width: 180px;
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-menu-item);
   background: transparent;
   font-size: 12px;
+  line-height: 1;
   color: var(--ink-muted);
   cursor: pointer;
 }

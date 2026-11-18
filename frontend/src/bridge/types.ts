@@ -41,6 +41,37 @@ export interface NetworkStatusSnapshot {
   isDemoData?: boolean;
 }
 
+export interface CategoryItem {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+  textColor: string;
+  topicCount: number;
+  parentCategoryId?: number;
+  description?: string;
+}
+
+export interface TagItem {
+  name: string;
+  count: number;
+  groupName?: string;
+}
+
+export interface SiteMetadata {
+  siteId: string;
+  canTagTopics: boolean;
+  categories: CategoryItem[];
+  tags: TagItem[];
+  fetchedAt: string;
+}
+
+export interface CredentialsInput {
+  cookieHeader: string;
+  userApiKey: string;
+  userAgent: string;
+}
+
 export interface TopicSummary {
   id: number;
   title: string;
@@ -64,9 +95,11 @@ export interface TopicSummary {
 }
 
 export interface FeedQuery {
-  filter: 'latest' | 'unread' | 'top' | 'category';
+  filter: 'latest' | 'unread' | 'top' | 'new' | 'category' | 'tag';
   categorySlug?: string;
+  parentCategorySlug?: string;
   categoryId?: number;
+  tag?: string;
   page: number;
   queryGeneration: number;
 }
@@ -199,6 +232,12 @@ export interface DesktopBridge {
   getSession(): Promise<SiteSession>;
   getNetworkStatus(): Promise<NetworkStatusSnapshot>;
   simulateNetworkPhase?(phase: NetworkPhase): Promise<NetworkStatusSnapshot>;
+  getSiteMetadata(): Promise<SiteMetadata>;
+  openShieldWindow(mode: 'challenge' | 'login'): Promise<void>;
+  applyCredentials(input: CredentialsInput): Promise<{ session: SiteSession; network: NetworkStatusSnapshot }>;
+  probeRecovery(): Promise<{ session: SiteSession; network: NetworkStatusSnapshot }>;
+  subscribeNetworkStatus?(listener: (snap: NetworkStatusSnapshot) => void): () => void;
+  subscribeSession?(listener: (sess: SiteSession) => void): () => void;
   loadFeed(windowInstanceId: string, query: FeedQuery): Promise<FeedPage>;
   openTopic(instanceId: string, topicId: number, targetPostNumber?: number): Promise<{ detail: TopicDetail; anchor: ReadAnchor }>;
   saveReadAnchor(anchor: ReadAnchor): Promise<void>;

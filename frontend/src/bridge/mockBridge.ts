@@ -1,4 +1,5 @@
 import type {
+  CredentialsInput,
   DesktopBridge,
   Draft,
   FeedPage,
@@ -8,6 +9,7 @@ import type {
   NotificationSnapshot,
   ReadAnchor,
   SearchResult,
+  SiteMetadata,
   SiteSession,
   SubmitOperation,
   TopicDetail,
@@ -16,6 +18,23 @@ import type {
 
 const LONG_CJK_TITLE =
   '关于在 Windows 桌面端构建多文档工作区（DAW 风格可重叠窗口、停靠分屏、高 DPI 缩放、中文输入法候选词保护、429 共享限流冷却与离线草稿防丢失机制）的长标题边界压力测试与排版对齐验证样本——两百字中文标题溢出与窗口标题栏截断检查';
+
+const DEMO_CATEGORIES = [
+  { id: 1, name: '开发调优', slug: 'develop', color: '0088CC', textColor: 'FFFFFF', topicCount: 18420 },
+  { id: 2, name: '界面设计', slug: 'design', color: 'B4532F', textColor: 'FFFFFF', topicCount: 3120 },
+  { id: 3, name: '搞七捻三', slug: 'gossip', color: '652D90', textColor: 'FFFFFF', topicCount: 24910 },
+  { id: 4, name: '资源荟萃', slug: 'resources', color: '25AAE2', textColor: 'FFFFFF', topicCount: 9840 },
+  { id: 5, name: '前沿快讯', slug: 'news', color: '3F6B4F', textColor: 'FFFFFF', topicCount: 6430 },
+];
+
+const DEMO_TAGS = [
+  { name: 'wails', count: 142 },
+  { name: 'cloudflare', count: 891 },
+  { name: '429', count: 318 },
+  { name: 'arm64', count: 95 },
+  { name: 'react', count: 460 },
+  { name: 'discourse', count: 274 },
+];
 
 const DEMO_TOPICS: TopicSummary[] = [
   {
@@ -126,7 +145,7 @@ const DEMO_TOPIC_DETAILS: Record<number, TopicDetail> = {
         canEdit: false,
         createdAt: '2026-11-17T09:00:00Z',
         cookedHtml: `
-          <p>当前界面运行在 <strong>Mock DesktopBridge（演示数据）</strong> 上，用于 Phase 0 验证暖纸色排版、DAW 内部可重叠窗口与草稿恢复规则。</p>
+          <p>当前界面运行在 <strong>Mock DesktopBridge（演示数据）</strong> 上；在桌面应用中默认优先连接 <code>https://linux.do</code> 真实接口，并配备独立的 Cloudflare 过盾窗口与 429 共享冷却。</p>
           <blockquote><p>未保存草稿不能被静默关闭；浮动、停靠与最小化只改变视图状态，不破坏编辑缓冲。</p></blockquote>
           <pre><code>// 示例：RequestCoordinator 同资源 GET 去重
 const detail = await bridge.openTopic('topic-1001', 1001);</code></pre>
@@ -291,11 +310,37 @@ export class MockDesktopBridge implements DesktopBridge {
     return { ...this.network };
   }
 
+  async getSiteMetadata(): Promise<SiteMetadata> {
+    return {
+      siteId: 'linux.do',
+      canTagTopics: true,
+      categories: DEMO_CATEGORIES,
+      tags: DEMO_TAGS,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  async openShieldWindow(_mode: 'challenge' | 'login'): Promise<void> {
+    // No-op in browser mock preview
+  }
+
+  async applyCredentials(input: CredentialsInput): Promise<{ session: SiteSession; network: NetworkStatusSnapshot }> {
+    if (input.cookieHeader || input.userApiKey) {
+      this.network = { ...this.network, phase: 'ready', retryAfterSeconds: 0, message: '' };
+    }
+    return { session: { ...this.session }, network: { ...this.network } };
+  }
+
+  async probeRecovery(): Promise<{ session: SiteSession; network: NetworkStatusSnapshot }> {
+    this.network = { ...this.network, phase: 'ready', retryAfterSeconds: 0, message: '' };
+    return { session: { ...this.session }, network: { ...this.network } };
+  }
+
   async simulateNetworkPhase(phase: NetworkPhase): Promise<NetworkStatusSnapshot> {
     const messages: Record<NetworkPhase, string> = {
       ready: '',
       cooling_down: '访问过于频繁，32 秒后可重试',
-      challenge_required: '需要完成站点验证',
+      challenge_required: '需要完成 Cloudflare 站点验证',
       challenge_paused: '验证后接口仍受限，已暂停自动请求',
       auth_expired: '登录状态已失效，需要重新连接',
       forbidden: '当前账号无权访问该资源',
@@ -314,10 +359,14 @@ export class MockDesktopBridge implements DesktopBridge {
     const filtered = DEMO_TOPICS.filter((t) => {
       if (query.filter === 'unread') return t.unreadPosts > 0 || t.newPosts > 0;
       if (query.filter === 'top') return t.likeCount >= 18;
+      if (query.filter === 'category' && query.categoryId) return t.categoryId === query.categoryId;
+      if (query.filter === 'tag' && query.tag) {
+        return t.title.toLowerCase().includes(query.tag.toLowerCase()) || t.id === 1001;
+      }
       return true;
     });
     return {
-      queryKey: `linux.do:demo:${query.filter}`,
+      queryKey: `linux.do:demo:${query.filter}:${query.categoryId ?? ''}:${query.tag ?? ''}`,
       queryGeneration: query.queryGeneration,
       page: query.page,
       hasMore: false,
